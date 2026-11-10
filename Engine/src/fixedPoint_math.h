@@ -57,6 +57,65 @@ static inline int64_t mul32_64(int32_t i1,int32_t i2)
 {
 	return (int64_t)i1*i2;
 }
+#ifdef C4DUKE
+/* c4: c4's machine has no 64-bit arithmetic, and every operation on an
+   int64_t is a call (a division a long one). Where the product or the
+   shifted numerator fits in 32 bits, these work in 32, which gives the
+   same value; otherwise as before. */
+#define C4_WITHIN(a, n) ((a) >= -(n) && (a) <= (n))
+/* fixedPoint_math.c: the int64_t forms' values from 32-bit operations,
+   *done 0 where they cannot (operands at the ends of the range) */
+int32_t c4_divscale(int32_t a, int32_t d, int32_t s, int *done);
+int32_t c4_scale(int32_t a, int32_t b, int32_t c, int *done);
+int32_t c4_mulscale(int32_t a, int32_t b, int32_t s, int *done);
+static inline int scale (int32_t input1, int32_t input2, int32_t input3)
+{
+	int done;
+	int32_t r;
+	if (C4_WITHIN(input1, 46340) && C4_WITHIN(input2, 46340) && input3 != -1)
+		return (input1*input2)/input3;
+	r = c4_scale(input1, input2, input3, &done);
+	if (done)
+		return r;
+	return (int)(mul32_64(input1,input2)/(int64_t)input3);
+}
+static inline int mulscale (int32_t input1, int32_t input2, int32_t input3)
+{
+	int done;
+	int32_t r;
+	if (C4_WITHIN(input1, 46340) && C4_WITHIN(input2, 46340) && input3 < 32)
+		return (input1*input2)>>input3;
+	r = c4_mulscale(input1, input2, input3, &done);
+	if (done)
+		return r;
+	return (int)(mul32_64(input1,input2)>>input3);
+}
+static inline int dmulscale  (int32_t input1, int32_t input2, int32_t input3,int32_t input4,int32_t input5)
+{
+	if (C4_WITHIN(input1, 32767) && C4_WITHIN(input2, 32767) && C4_WITHIN(input3, 32767) &&
+	    C4_WITHIN(input4, 32767) && input5 < 32)
+		return (input1*input2 + input3*input4)>>input5;
+	return (int)((mul32_64(input1,input2) + mul32_64(input3,input4))>>input5);
+}
+static inline int tmulscale(int32_t i1, int32_t i2, int32_t i3, int32_t i4, int32_t i5, int32_t i6,int32_t shift)
+{
+	if (C4_WITHIN(i1, 16383) && C4_WITHIN(i2, 16383) && C4_WITHIN(i3, 16383) && C4_WITHIN(i4, 16383) &&
+	    C4_WITHIN(i5, 16383) && C4_WITHIN(i6, 16383) && shift < 32)
+		return (i1*i2 + i3*i4 + i5*i6)>>shift;
+	return (int)((mul32_64(i1,i2) + mul32_64(i3,i4) + mul32_64(i5,i6))>>shift);
+}
+static inline int32_t divscale(int32_t i1, int32_t i2, int32_t i3)
+{
+	int done;
+	int32_t r;
+	if (i3 < 31 && C4_WITHIN(i1, 0x7fffffff >> i3) && i2 != -1)
+		return (int32_t)((uint32_t)i1 << i3) / i2;
+	r = c4_divscale(i1, i2, i3, &done);
+	if (done)
+		return r;
+	return (int32_t)(((int64_t)i1<<i3)/i2);
+}
+#else
 static inline int scale (int32_t input1, int32_t input2, int32_t input3)
 {
 	return (int)(mul32_64(input1,input2)/(int64_t)input3);
@@ -77,6 +136,7 @@ static inline int32_t divscale(int32_t i1, int32_t i2, int32_t i3)
 {
 	return (int32_t)(((int64_t)i1<<i3)/i2);
 }
+#endif
 
 #define DEFFUNCS \
 DEFFUN(1)\

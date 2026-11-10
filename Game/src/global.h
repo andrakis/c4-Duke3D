@@ -42,6 +42,10 @@ void Shutdown(void);
 #endif
 #endif
 
+#ifdef C4DUKE
+#include "platform.h" /* c4: its BYTE_ORDER (unix_compat.h) */
+#endif
+
 #ifndef BYTE_ORDER
 #error Please define your platform.
 #endif

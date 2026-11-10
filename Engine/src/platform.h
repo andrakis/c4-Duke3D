@@ -13,6 +13,13 @@
 #error Define your platform!
 #endif
 
+#ifdef C4DUKE
+/* c4's port: one rand for every build, so that the c4lc builds' frames
+   can be held to gcc's (c4/duke-sum.c) */
+#define rand duke_rand
+int duke_rand(void);
+#endif
+
 #if (!defined __EXPORT__)
     #define __EXPORT__
 #endif

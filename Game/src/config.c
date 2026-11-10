@@ -73,8 +73,14 @@ int32 BFullScreen = 0;
 //
 
 int32 ScreenMode=2;
+#ifdef C4DUKE
+// c4: as the DOS game ran; Options > Video Setup changes it (c4/duke-display.c)
+int32 ScreenWidth = 320;
+int32 ScreenHeight = 200;
+#else
 int32 ScreenWidth = 640;
 int32 ScreenHeight = 480;
+#endif
 
 //
 // Mouse variables
@@ -341,23 +347,44 @@ void CONFIG_ReadKeys( void )
 ===================
 */
 
+#ifdef C4DUKE
+// c4: the mouse's buttons as DOS's SETUP.EXE set them for a new duke3d.cfg
+// (left fires; right strafes while held, and opens double-clicked; middle
+// walks), and the wheel (Int 33h's buttons 3 and 4 here, display.c) for the
+// weapons, as ports since have it. Chocolate gave the keys defaults when
+// there is no duke3d.cfg (FIX_00011) and the mouse none, so it did nothing.
+static char *c4_mousedefaults[MAXMOUSEBUTTONS] = { "Fire", "Strafe", "Move_Forward", "Previous_Weapon", "Next_Weapon", "", "" };
+static char *c4_mouseclickeddefaults[MAXMOUSEBUTTONS] = { "", "Open", "", "", "", "", "" };
+#endif
+
 void CONFIG_SetupMouse( int32 scripthandle )
    {
    int32 i;
    char  str[80];
    char  temp[80];
    int32 function, scale;
+#ifdef C4DUKE
+   // only for a duke3d.cfg that says nothing of the controls: what one says,
+   // even nothing for a button, stands
+   int32 none = scripthandle == -1 || SCRIPT_NumberEntries( scripthandle, "Controls" ) == 0;
+#endif
 
    for (i=0;i<MAXMOUSEBUTTONS;i++)
       {
       sprintf(str,"MouseButton%d",i);
       memset(temp,0,sizeof(temp));
       SCRIPT_GetString( scripthandle,"Controls", str,temp);
+#ifdef C4DUKE
+      if (none) strcpy(temp, c4_mousedefaults[i]);
+#endif
       function = CONFIG_FunctionNameToNum(temp);
       CONTROL_MapButton( function, i, false );
       sprintf(str,"MouseButtonClicked%d",i);
       memset(temp,0,sizeof(temp));
       SCRIPT_GetString( scripthandle,"Controls", str,temp);
+#ifdef C4DUKE
+      if (none) strcpy(temp, c4_mouseclickeddefaults[i]);
+#endif
       function = CONFIG_FunctionNameToNum(temp);
       CONTROL_MapButton( function, i, true );
       }
@@ -597,7 +624,12 @@ void CONFIG_ReadSetup( void )
    FILE* setup_file_hdl;
 
    printf("CONFIG_ReadSetup...\n");
-   
+#ifdef C4DUKE
+   // c4's test plays with the defaults, and writes nothing (c4/duke-sum.c)
+   if (duke_testing)
+      strcpy(setupfilename, "/nonexistent/duke3d.cfg");
+   else
+#endif
    if (!SafeFileExists(setupfilename))
       {
 		// FIX_00011: duke3d.cfg not needed anymore to start the game. Will create a default one
@@ -799,6 +831,9 @@ void CONFIG_WriteSetup( void )
    char  commmacro[] = COMMMACRO;
 
    if (!setupread) return;
+#ifdef C4DUKE
+   if (duke_testing) return;
+#endif
 
    printf("CONFIG_WriteSetup...\n");
 

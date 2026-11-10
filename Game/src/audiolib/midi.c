@@ -952,6 +952,9 @@ int MIDI_Reset
 
    MIDI_AllNotesOff();
 
+#ifndef C4DUKE
+   // a twenty-fourth of a second for the notes to die, on DOS's clock;
+   // c4: the card's stream keeps its own time, and the OPL has no queue
    flags = DisableInterrupts();
    _enable();
    time = clock() + CLOCKS_PER_SEC/24;
@@ -959,6 +962,9 @@ int MIDI_Reset
       ;
 
    RestoreInterrupts( flags );
+#else
+   (void) time; (void) flags;
+#endif
 
    for( channel = 0; channel < NUM_MIDI_CHANNELS; channel++ )
       {
@@ -1779,6 +1785,10 @@ static void _MIDI_InitEMIDI
    int    c2;
 
    type = EMIDI_GeneralMIDI;
+#ifdef C4DUKE
+   // the AdLib's tracks: libjs's OPL is the card (c4/duke-snd.c)
+   type = EMIDI_Adlib;
+#else
    switch( MUSIC_SoundDevice )
       {
       case SoundBlaster :
@@ -1821,6 +1831,7 @@ static void _MIDI_InitEMIDI
          type = EMIDI_Ultrasound;
          break;
       }
+#endif
 
    _MIDI_ResetTracks();
 

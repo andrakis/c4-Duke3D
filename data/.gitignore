@@ -1,0 +1,7 @@
+# c4: the data is never committed (c4's games/README.md, data/README.md)
+*.zip
+*.part
+*.GRP
+*.grp
+*.RTS
+LICENSE.TXT

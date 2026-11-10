@@ -11,6 +11,14 @@
 #include "draw.h"
 
 int32_t pixelsAllowed = 10000000000;
+#ifdef C4DUKE
+/* c4: the count is for watching a frame drawn a pixel at a time; engine.c
+   sets it to 100,000,000 every frame, so it never runs out, and testing it
+   cost a load, a store and a compare for every pixel drawn */
+#define PIXEL_ALLOWED 1
+#else
+#define PIXEL_ALLOWED (pixelsAllowed-- > 0)
+#endif
 
 uint8_t  *transluc = NULL;
 
@@ -54,6 +62,9 @@ void sethlinesizes(int32_t i1, int32_t _bits, uint8_t * textureAddress)
 
 //FCS:   Draw ceiling/floors
 //Draw a line from destination in the framebuffer to framebuffer-numPixels
+#ifdef C4DUKE
+#define hlineasm4 c4_unused_hlineasm4 /* c4: its own, below */
+#endif
 void hlineasm4(int32_t numPixels, int32_t shade, uint32_t i4, uint32_t i5, uint8_t *dest){
 
     int32_t shifter = ((256-machxbits_al) & 0x1f);
@@ -74,7 +85,7 @@ void hlineasm4(int32_t numPixels, int32_t shade, uint32_t i4, uint32_t i5, uint8
 	    source = shld(source,i4,bits);
 	    source = texture[source];
         
-		if (pixelsAllowed-- > 0)
+		if (PIXEL_ALLOWED)
 			*dest = globalpalwritten[shade|source];
         
 	    dest--;
@@ -86,6 +97,9 @@ void hlineasm4(int32_t numPixels, int32_t shade, uint32_t i4, uint32_t i5, uint8
 		
     }
 }
+#ifdef C4DUKE
+#undef hlineasm4
+#endif
 
 static int32_t rmach_eax;
 static int32_t rmach_ebx;
@@ -128,7 +142,7 @@ void rhlineasm4(int32_t i1, uint8_t* texture, int32_t i3, uint32_t i4, uint32_t 
 	    ebp &= rmach_esi;
 	    i1 = ((i1&0xffffff00)|(((uint8_t *)i3)[rmach_edx]));
 
-		if (pixelsAllowed-- > 0)
+		if (PIXEL_ALLOWED)
 			 ((uint8_t *)rmach6b)[numPixels] = (i1&0xff);
 
 	    texture -= ebp;
@@ -180,7 +194,7 @@ void rmhlineasm4(int32_t i1, intptr_t shade, int32_t colorIndex, int32_t i4, int
         
         //Check if this colorIndex is the transparent color (255).
 	    if ((colorIndex&0xff) != 255) {
-			if (pixelsAllowed-- > 0)
+			if (PIXEL_ALLOWED)
 			{
 				i1 = ((i1&0xffffff00)|(((uint8_t  *)colorIndex)[rmmach_edx]));
 				((uint8_t  *)rmach6b)[numPixels] = (i1&0xff);
@@ -220,7 +234,7 @@ int32_t prevlineasm1(int32_t i1, uint8_t* palette, int32_t i3, int32_t i4, uint8
         i4 = ((uint32_t)i4) >> mach3_al;
 	    i4 = (i4&0xffffff00) | source[i4];
 
-		if (pixelsAllowed-- > 0)
+		if (PIXEL_ALLOWED)
 			*dest = palette[i4];
 
 		
@@ -233,6 +247,9 @@ int32_t prevlineasm1(int32_t i1, uint8_t* palette, int32_t i3, int32_t i4, uint8
 
 
 //FCS: This is used to draw wall border vertical lines
+#ifdef C4DUKE
+#define vlineasm1 c4_unused_vlineasm1 /* c4: its own, below */
+#endif
 int32_t vlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t numPixels, int32_t vplce, uint8_t* texture, uint8_t* dest)
 {
     uint32_t temp;
@@ -247,7 +264,7 @@ int32_t vlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t numPixels, int3
         
 	    temp = texture[temp];
       
-		if (pixelsAllowed-- > 0)
+		if (PIXEL_ALLOWED)
 			*dest = palookupoffse[temp];
 	    
 		vplce += vince;
@@ -256,6 +273,9 @@ int32_t vlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t numPixels, int3
     }
     return vplce;
 } 
+#ifdef C4DUKE
+#undef vlineasm1
+#endif
 
 
 int32_t tvlineasm1(int32_t i1, uint8_t  * texture, int32_t numPixels, int32_t i4, uint8_t  *source, uint8_t  *dest)
@@ -280,7 +300,7 @@ int32_t tvlineasm1(int32_t i1, uint8_t  * texture, int32_t numPixels, int32_t i4
 			if (transrev) 
 				colorIndex = ((colorIndex>>8)|(colorIndex<<8));
             
-			if (pixelsAllowed-- > 0)
+			if (PIXEL_ALLOWED)
 				*dest = transluc[colorIndex];
 		}
         
@@ -334,7 +354,7 @@ void tvlineasm2(uint32_t i1, uint32_t i2, uintptr_t i3, uintptr_t i4, uint32_t i
 				if (transrev) 
 					val = ((val>>8)|(val<<8));
 
-				if (pixelsAllowed-- > 0)
+				if (PIXEL_ALLOWED)
 					((uint8_t  *)i6)[tran2edi1] = transluc[val];
 			}
 		} else if (i4 == 255) { // skipdraw2
@@ -345,7 +365,7 @@ void tvlineasm2(uint32_t i1, uint32_t i2, uintptr_t i3, uintptr_t i4, uint32_t i
 			if (transrev) 
                 val = ((val>>8)|(val<<8));
 
-			if (pixelsAllowed-- > 0)
+			if (PIXEL_ALLOWED)
 				((uint8_t  *)i6)[tran2edi] = transluc[val];
 		} else {
 			uint16_t l = ((uint8_t  *)i6)[tran2edi]<<8;
@@ -356,7 +376,7 @@ void tvlineasm2(uint32_t i1, uint32_t i2, uintptr_t i3, uintptr_t i4, uint32_t i
 				l = ((l>>8)|(l<<8));
 				r = ((r>>8)|(r<<8));
 			}
-			if (pixelsAllowed-- > 0)
+			if (PIXEL_ALLOWED)
 			{
 				((uint8_t  *)i6)[tran2edi] = transluc[l];
 				((uint8_t  *)i6)[tran2edi1] =transluc[r];
@@ -372,6 +392,9 @@ void tvlineasm2(uint32_t i1, uint32_t i2, uintptr_t i3, uintptr_t i4, uint32_t i
 
 
 static uint8_t  machmv;
+#ifdef C4DUKE
+#define mvlineasm1 c4_unused_mvlineasm1 /* c4: its own, below */
+#endif
 int32_t mvlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t i3, int32_t vplce, uint8_t* texture, uint8_t  *dest)
 {
     uint32_t temp;
@@ -383,7 +406,7 @@ int32_t mvlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t i3, int32_t vp
 
 	    if (temp != 255) 
 		{
-			if (pixelsAllowed-- > 0)
+			if (PIXEL_ALLOWED)
 			*dest = palookupoffse[temp];
 		}
 
@@ -392,6 +415,9 @@ int32_t mvlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t i3, int32_t vp
     }
     return vplce;
 }
+#ifdef C4DUKE
+#undef mvlineasm1
+#endif
 
 
 void setupvlineasm(int32_t i1)
@@ -400,6 +426,9 @@ void setupvlineasm(int32_t i1)
 }
 
 //FCS This is used to fill the inside of a wall (so it draws VERTICAL column, always).
+#ifdef C4DUKE
+#define vlineasm4 c4_unused_vlineasm4 /* c4: its own, below */
+#endif
 void vlineasm4(int32_t columnIndex, intptr_t framebuffer)
 {
 
@@ -422,7 +451,7 @@ void vlineasm4(int32_t columnIndex, intptr_t framebuffer)
         	    temp = ((uint32_t)vplce[i]) >> mach3_al;
         	    temp = (((uint8_t *)(bufplce[i]))[temp]);
                 
-				if (pixelsAllowed-- > 0)
+				if (PIXEL_ALLOWED)
         			dest[index+i] = palookupoffse [i] [temp];
                 
 	            vplce[i] += vince[i];
@@ -431,6 +460,9 @@ void vlineasm4(int32_t columnIndex, intptr_t framebuffer)
         } while (((uint32_t)dest - bytesperline) < ((uint32_t)dest));
     }
 } 
+#ifdef C4DUKE
+#undef vlineasm4
+#endif
 
 
 void setupmvlineasm(int32_t i1)
@@ -440,6 +472,9 @@ void setupmvlineasm(int32_t i1)
 } 
 
 
+#ifdef C4DUKE
+#define mvlineasm4 c4_unused_mvlineasm4 /* c4: its own, below */
+#endif
 void mvlineasm4(int32_t column, intptr_t framebufferOffset)
 {
     int i;
@@ -459,7 +494,7 @@ void mvlineasm4(int32_t column, intptr_t framebufferOffset)
 	      temp = (((uint8_t *)(bufplce[i]))[temp]);
 	      if (temp != 255)
 		  {
-			  if (pixelsAllowed-- > 0)
+			  if (PIXEL_ALLOWED)
 				dest[index+i] = palookupoffse[i][temp];
 		  }
 	      vplce[i] += vince[i];
@@ -468,6 +503,9 @@ void mvlineasm4(int32_t column, intptr_t framebufferOffset)
 
     } while (((uint32_t)dest - bytesperline) < ((uint32_t)dest));
 } 
+#ifdef C4DUKE
+#undef mvlineasm4
+#endif
 /* END ---------------  WALLS RENDERING METHOD (USED TO BE HIGHLY OPTIMIZED ASSEMBLY) ----------------------------*/
 
 
@@ -531,7 +569,7 @@ setup:
         
         i1 = (i1&0xffffff00) | (((uint8_t  *)spal_eax)[i1]&0xff);
         
-        if (pixelsAllowed-- > 0)
+        if (PIXEL_ALLOWED)
             *dest = i1;
         
         dest += bytesperline;
@@ -591,7 +629,7 @@ setup:
         {
             colorIndex = (colorIndex&0xffffff00) | (((uint8_t  *)spal_eax)[colorIndex]&0xff);
             
-            if (pixelsAllowed-- > 0)
+            if (PIXEL_ALLOWED)
                 *dest = colorIndex;
         }
    
@@ -671,7 +709,7 @@ void DrawSpriteVerticalLine(int32_t i2, int32_t numPixels, uint32_t i4, uint8_t 
 
 				colorIndex = transluc[val];
 
-				if (pixelsAllowed-- > 0)
+				if (PIXEL_ALLOWED)
 					*dest = colorIndex;
 			}
             
@@ -743,7 +781,7 @@ void mhlineskipmodify( uint32_t i2, int32_t numPixels, int32_t i5, uint8_t* dest
 
         //Skip transparent color.
 		if ((colorIndex&0xff) != 0xff){
-            if (pixelsAllowed-- > 0)
+            if (PIXEL_ALLOWED)
 				*dest = mmach_asm3[colorIndex];
         }
 	    i2 += mmach_asm1;
@@ -797,7 +835,7 @@ void thlineskipmodify(int32_t i1, uint32_t i2, uint32_t i3, int32_t i4, int32_t 
 		    if (transrev) 
 				val = ((val>>8)|(val<<8));
 
-			if (pixelsAllowed-- > 0)
+			if (PIXEL_ALLOWED)
 			 *i6 = transluc[val];
 	    }
 
@@ -903,7 +941,7 @@ void slopevlin(intptr_t i1, uint32_t i2, int32_t i3, int32_t i4, int32_t i5, int
 		    eax = ((eax&0xffffff00)|(*((uint8_t  *)(ebx+edx))));
 		    ebx = esi;
 
-			if (pixelsAllowed-- > 0)
+			if (PIXEL_ALLOWED)
 				*((uint8_t  *)i1) = (eax&0xff);
 
 		    edx = edi;
@@ -921,3 +959,116 @@ void slopevlin(intptr_t i1, uint32_t i2, int32_t i3, int32_t i4, int32_t i5, int
 
 
 /* END ---------------  FLOOR/CEILING RENDERING METHOD (USED TO BE HIGHLY OPTIMIZED ASSEMBLY) ----------------------------*/
+
+#ifdef C4DUKE
+/* ---------------  c4's versions of the inner loops above ----------------------------
+   The same pixels, drawn the way c4's stack machine does them fastest: c4
+   has no logical shift, so an unsigned value shifted right was a call (c4lc's
+   <lsr>) for every pixel; here it is an arithmetic shift and a mask made once.
+   Each loop keeps what it needs in locals rather than reading the four
+   columns' global arrays for every pixel, and draws a column at a time (the
+   four columns of vlineasm4 never share a pixel, so the order is free).
+   Shift counts are taken as x86 takes them, modulo 32, as gcc's build does.  */
+
+/* x >> s, logically, for 0 <= s < 32: (int)x >> s & lsrmask(s) */
+static inline int32_t lsrmask (int32_t s)
+{
+    return s ? (int32_t)(0x7fffffff >> (s - 1)) : -1;
+}
+
+int32_t vlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t numPixels, int32_t vplce, uint8_t* texture, uint8_t* dest)
+{
+    int32_t sh = mach3_al, mask = lsrmask(mach3_al), bpl = bytesperline;
+    uint32_t v = (uint32_t)vplce;
+    numPixels++;
+    while (numPixels)
+    {
+        *dest = palookupoffse[texture[((int32_t)v >> sh) & mask]];
+        v += (uint32_t)vince;
+        dest += bpl;
+        numPixels--;
+    }
+    return (int32_t)v;
+}
+
+int32_t mvlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t i3, int32_t vplce, uint8_t* texture, uint8_t  *dest)
+{
+    int32_t sh = machmv, mask = lsrmask(machmv), bpl = bytesperline, t;
+    uint32_t v = (uint32_t)vplce;
+    for (; i3 >= 0; i3--)
+    {
+        t = texture[((int32_t)v >> sh) & mask];
+        if (t != 255)
+            *dest = palookupoffse[t];
+        v += (uint32_t)vince;
+        dest += bpl;
+    }
+    return (int32_t)v;
+}
+
+/* COUNT rows of four columns from FRAMEBUFFER, the columns' state in
+   vplce, vince, bufplce and palookupoffse */
+void vlineasm4(int32_t count, intptr_t framebuffer)
+{
+    int32_t i, n, sh = mach3_al, mask = lsrmask(mach3_al), bpl = bytesperline;
+    uint32_t v, inc;
+    uint8_t *p, *tex, *pal;
+    for (i = 0; i < 4; i++)
+    {
+        p = (uint8_t *)framebuffer + i;
+        tex = (uint8_t *)bufplce[i];
+        pal = palookupoffse[i];
+        v = vplce[i];
+        inc = vince[i];
+        for (n = count; n > 0; n--)
+        {
+            *p = pal[tex[((int32_t)v >> sh) & mask]];
+            v += inc;
+            p += bpl;
+        }
+        vplce[i] = v;
+    }
+}
+
+void mvlineasm4(int32_t count, intptr_t framebufferOffset)
+{
+    int32_t i, n, sh = machmv, mask = lsrmask(machmv), bpl = bytesperline, t;
+    uint32_t v, inc;
+    uint8_t *p, *tex, *pal;
+    for (i = 0; i < 4; i++)
+    {
+        p = (uint8_t *)framebufferOffset + i;
+        tex = (uint8_t *)bufplce[i];
+        pal = palookupoffse[i];
+        v = vplce[i];
+        inc = vince[i];
+        for (n = count; n > 0; n--)
+        {
+            t = tex[((int32_t)v >> sh) & mask];
+            if (t != 255)
+                *p = pal[t];
+            v += inc;
+            p += bpl;
+        }
+        vplce[i] = v;
+    }
+}
+
+/* a floor's or ceiling's row, right to left: shld(i5 >> shifter, i4, bits) */
+void hlineasm4(int32_t numPixels, int32_t shade, uint32_t i4, uint32_t i5, uint8_t *dest)
+{
+    int32_t sh1 = ((256 - machxbits_al) & 0x1f), m1 = lsrmask(sh1);
+    int32_t bits = bitsSetup, sh2 = (32 - bitsSetup) & 31, m2 = lsrmask(sh2);
+    uint32_t a = i5, b = i4, da = (uint32_t)asm1, db = (uint32_t)asm2;
+    uint8_t *texture = textureSetup, *pal = globalpalwritten + (shade & 0xffffff00);
+    numPixels++;
+    while (numPixels)
+    {
+        *dest = pal[texture[((uint32_t)(((int32_t)a >> sh1) & m1) << bits) | (uint32_t)(((int32_t)b >> sh2) & m2)]];
+        dest--;
+        a -= da;
+        b -= db;
+        numPixels--;
+    }
+}
+#endif

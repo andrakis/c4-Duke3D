@@ -47,7 +47,15 @@ typedef struct grpSet_s{
 static grpSet_t grpSet;
 
 
+#ifdef C4DUKE
+/* c4: from the heap while a GRP is read, rather than a megabyte of zeros
+   in the program's image (c4rlink keeps every object's BSS in the image
+   but the last one's) */
+#define CRCBUFSIZE (64 * 1024)
+#else
 uint8_t         crcBuffer[ 1 << 20]     ;
+#define CRCBUFSIZE sizeof(crcBuffer)
+#endif
 int32_t initgroupfile(const char  *filename)
 {
 	uint8_t         buf[16]                 ;
@@ -137,8 +145,18 @@ int32_t initgroupfile(const char  *filename)
 	//groupfil_memory[numgroupfiles] = malloc(i);
     
     //Load the full GRP in RAM.
-	while((j=read(archive->fileDescriptor, crcBuffer, sizeof(crcBuffer)))){
+	{
+#ifdef C4DUKE
+	uint8_t *crcBuffer = malloc(CRCBUFSIZE);
+	if (crcBuffer == NULL)
+		Error(EXIT_FAILURE, "No memory to read %s\n", filename);
+#endif
+	while((j=read(archive->fileDescriptor, crcBuffer, CRCBUFSIZE))){
 		archive->crc32 = crc32_update(crcBuffer,j,archive->crc32);
+	}
+#ifdef C4DUKE
+	free(crcBuffer);
+#endif
 	}
     
     // The game layer seems to absolutely need to access an array int[4] groupefil_crc32
@@ -405,7 +423,7 @@ int32_t klseek(int32_t handle, int32_t offset, int whence){
 	
 }
 
-#if defined(__APPLE__) || defined(__linux__)
+#if defined(__APPLE__) || defined(__linux__) || defined(C4DUKE)
 int32_t filelength(int32_t fd){
     struct stat stats;
     fstat(fd, &stats);

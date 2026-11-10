@@ -64,4 +64,26 @@
 
 #define USER_DUMMY_NETWORK 1
 
+#ifdef C4DUKE
+/* c4's port: what glibc's headers say and C4IX's libc does not -- the byte
+   order (a PC's, little-endian), and the file modes for the group and the
+   rest, which mean nothing on a machine of one user */
+#ifndef BYTE_ORDER
+#define LITTLE_ENDIAN 1234
+#define BIG_ENDIAN 4321
+#define BYTE_ORDER LITTLE_ENDIAN
+#endif
+#ifndef S_IRGRP
+#define S_IRGRP 0040
+#define S_IWGRP 0020
+#define S_IXGRP 0010
+#define S_IROTH 0004
+#define S_IWOTH 0002
+#define S_IXOTH 0001
+#endif
+#ifndef S_IRWXU
+#define S_IRWXU 0700
+#endif
+#endif
+
 #endif

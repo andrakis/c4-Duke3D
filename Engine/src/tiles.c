@@ -5,6 +5,11 @@
 //  Created by fabien sanglard on 12-12-22.
 //  Copyright (c) 2012 fabien sanglard. All rights reserved.
 //
+// "Build Engine & Tools" Copyright (c) 1993-1997 Ken Silverman
+// Ken Silverman's official web site: "http://www.advsys.net/ken"
+// See the included license file "BUILDLIC.TXT" for license info.
+// This file has been modified from Ken Silverman's original release
+//
 
 #include "tiles.h"
 #include "engine.h"
@@ -268,6 +273,15 @@ int loadpics(char  *filename, char * gamedir)
     /* try dpmi_DETERMINEMAXREALALLOC! */
     
     cachesize = max(artsize,1048576);
+#ifdef C4DUKE
+    // c4: no more than DOS had, so that the game fits in a small machine
+    // beside the rest; Build loads tiles again as they are needed
+#ifndef DUKE_CACHE
+#define DUKE_CACHE (12 * 1024 * 1024)
+#endif
+    if (cachesize > DUKE_CACHE)
+        cachesize = DUKE_CACHE;
+#endif
     while ((pic = (uint8_t  *)kkmalloc(cachesize)) == NULL)
     {
         cachesize -= 65536L;

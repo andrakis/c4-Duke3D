@@ -273,7 +273,10 @@ void FixFilePath(char  *filename)
 
             if (dir == NULL)
             {
-                *ptr = PATH_SEP_CHAR;
+                /* c4: what was there, which at the end of the name is its
+                   terminator; a separator here ran the name on into
+                   whatever followed it (on a machine with no directories) */
+                *ptr = pch;
                 return;  /* maybe dir doesn't exist? give up. */
             }
 

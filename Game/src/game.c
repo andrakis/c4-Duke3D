@@ -88,7 +88,11 @@ int32 CommandMusicToggleOff = 0;
 // For addfaz's stun server. use /stun to activate
 uint16_t g_bStun = 0;
 
+#ifdef C4DUKE
+char confilename[128] = "GAME.CON"; /* c4lc read the braces as an empty name */
+#else
 char confilename[128] = {"GAME.CON"};
+#endif
 char boardfilename[128] = {0};
 uint8_t  waterpal[768], slimepal[768], titlepal[768], drealms[768], endingpal[768];
 char  firstdemofile[80] = { '\0' };
@@ -7984,7 +7988,17 @@ void getnames(void)
 
 
 const char* const baseDir="duke3d*.grp";
-#ifdef _WIN32
+#if defined(C4DUKE)
+
+// c4: the game's own DUKE3D.GRP where it runs, or with -home the person's
+// own, among the page's uploads (c4/duke-sum.c)
+void duke_find_grp(char *path);
+void findGRPToUse(char * groupfilefullpath)
+{
+    duke_find_grp(groupfilefullpath);
+}
+
+#elif defined(_WIN32)
 
 void findGRPToUse(uint8_t * groupfilefullpath)
 {
@@ -8145,6 +8159,9 @@ int main(int argc,char  **argv)
 	
 	printf("*** Chocolate DukeNukem3D v%d.%d ***\n\n", CHOCOLATE_DUKE_REV_X, CHOCOLATE_DUKE_REV_DOT_Y);
 
+#ifdef C4DUKE
+	duke_sum_args(argc, argv); // c4's own: -home, -res and the test's (c4/duke-sum.c)
+#endif
 	// FIX_00033: Fake multi and AI are now fully working
 	ud.multimode = 1;  // xduke: must be done before checkcommandline or that will prevent Fakeplayer and AI
 	
@@ -8234,6 +8251,9 @@ int main(int argc,char  **argv)
 	// computing exe crc
 	ud.exeCRC[0] = 0;
 	exe = NULL;
+#ifdef C4DUKE
+	// (only for a network game, and c4's programs are not files to read)
+#else
 	filehandle = open(argv[0],O_BINARY|O_RDONLY);
 	if(filehandle!=-1)
 	{
@@ -8246,6 +8266,7 @@ int main(int argc,char  **argv)
 		}
 		close(filehandle);
 	}
+#endif
 
 
 	checkcommandline(argc,argv);

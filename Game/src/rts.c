@@ -83,7 +83,12 @@ void RTS_AddFile (char  *filename)
    header.numlumps = IntelLong(header.numlumps);
    header.infotableofs = IntelLong(header.infotableofs);
    length = header.numlumps*sizeof(filelump_t);
+#ifdef C4DUKE
+   // c4lc has no alloca: the header's table, once, from the heap
+   fileinfo = malloc (length);
+#else
    fileinfo = alloca (length);
+#endif
    if (!fileinfo)
       Error (EXIT_FAILURE, "RTS file could not allocate header info on stack");
    lseek (handle, header.infotableofs, SEEK_SET);

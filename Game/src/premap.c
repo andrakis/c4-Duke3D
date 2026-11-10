@@ -993,7 +993,13 @@ void newgame(uint8_t  vn,uint8_t  ln,uint8_t  sk)
     short i;
 
     if(globalskillsound >= 0)
+#ifdef C4DUKE
+        // c4: the sound ends when the card is polled (c4/duke-snd.c), not
+        // from an interrupt, so the wait has to let that happen
+        while(Sound[globalskillsound].lock>=200) _idle();
+#else
         while(Sound[globalskillsound].lock>=200);
+#endif
     globalskillsound = -1;
 
     waitforeverybody();
@@ -1457,6 +1463,9 @@ void enterlevel(uint8_t  g)
     char text[512];
 
 	KB_ClearKeyDown(sc_Pause); // avoid entering in pause mode.
+#ifdef C4DUKE
+	duke_sum_level(); // c4's test: its input starts here (c4/duke-sum.c)
+#endif
 	
     if( (g&MODE_DEMO) != MODE_DEMO ) ud.recstat = ud.m_recstat;
     ud.respawn_monsters = ud.m_respawn_monsters;

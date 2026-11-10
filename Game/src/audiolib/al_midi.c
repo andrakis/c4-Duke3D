@@ -1359,7 +1359,9 @@ int AL_Init
    )
 
    {
+#ifndef C4DUKE
    BLASTER_CONFIG Blaster;
+#endif
    int status;
 
    status  = DPMI_LockMemoryRegion( AL_LockStart, AL_LockEnd );
@@ -1392,6 +1394,11 @@ int AL_Init
    AL_LeftPort = 0x388;
    AL_RightPort = 0x388;
 
+#ifdef C4DUKE
+   // an AdLib, mono: libjs's sound card (c4/duke-snd.c), whatever the
+   // card the game asked for
+   (void) soundcard;
+#else
    switch( soundcard )
       {
       case ProAudioSpectrum :
@@ -1423,6 +1430,7 @@ int AL_Init
             }
          break;
       }
+#endif
 // Temporarally commented out for ROTT.
 // Stereo FM seems to take too long on some computers and
 // causes the mouse driver to miss interrupts.

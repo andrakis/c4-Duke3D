@@ -84,6 +84,13 @@ Prepared for public release: 03/21/2003 - Charlie Wiederhold, 3D Realms
 #include "SDL_mixer.h"
 #endif
 
+#ifdef C4DUKE
+// c4's port (c4/duke-sum.c)
+extern int duke_testing;
+void duke_sum_args(int argc, char **argv);
+void duke_sum_level(void);
+#endif
+
 #include "function.h"
 
 //  FIX_00022: Automatically recognize the shareware grp (v1.3) + full version (1.3d) +
