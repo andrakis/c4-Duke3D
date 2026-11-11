@@ -219,21 +219,35 @@ void duke_quit (void)
 
 // ---- the palette ----
 
-// Ken's format: 4 bytes an entry, blue, green, red (0-63), and one unused
+static void present (void);
+
+// Ken's format: 4 bytes an entry, blue, green, red (0-63), and one unused.
+// A new palette is shown at once, with the frame last drawn, as SDL's 8-bit
+// screen showed it: the game fades the screen in and out by the palette
+// alone (palto), with no frame drawn between, and waits for a key on a
+// screen it has faded in so (the end of an episode's)
 int VBE_setPalette (uint8_t *palettebuffer)
 {
 	uint8_t *p;
-	int i, r, g, b;
+	int i, r, g, b, v, changed;
 	p = palettebuffer;
+	changed = 0;
 	for (i = 0; i < 256; i++)
 	{
 		b = p[0] & 63;
 		g = p[1] & 63;
 		r = p[2] & 63;
-		pal32[i] = (((r << 2) | (r >> 4)) << 16) | (((g << 2) | (g >> 4)) << 8) | ((b << 2) | (b >> 4));
+		v = (((r << 2) | (r >> 4)) << 16) | (((g << 2) | (g >> 4)) << 8) | ((b << 2) | (b >> 4));
+		if (pal32[i] != v)
+		{
+			pal32[i] = v;
+			changed = 1;
+		}
 		p += 4;
 	}
 	duke_sum_palette (palettebuffer);
+	if (changed)
+		present ();
 	return 1;
 }
 

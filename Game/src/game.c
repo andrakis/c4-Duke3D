@@ -2452,7 +2452,17 @@ void gameexit(char  *msg)
 // CTW - MODIFICATION
 /*  if( *t != 0 && *(t+1) != 'V' && *(t+1) != 'Y' && playonten == 0 )
         showtwoscreens();*/
+#ifdef C4DUKE
+    // c4: quitting goes straight back to the desktop or the prompt. The
+    // screens the game showed on its way out (the shareware's ordering
+    // information, the Plutonium Pak's and Atomic Edition's TEN advert)
+    // waited for a key in a loop that never slept, and with the palette
+    // still faded out (c4/duke-display.c showed a palette only with a
+    // frame), so a quit left a black screen and a busy game behind it
+    if (0)
+#else
     if( *t != 0 && *(t+1) != 'V' && *(t+1) != 'Y' && true)
+#endif
 		if(ud.showcinematics) // FIX_00029: toggle cinematics on / off
 			showtwoscreens();
 // CTW END - MODIFICATION

@@ -74,10 +74,11 @@ game always has the whole display.
 
 ## How fast
 
-7.15 M VM instructions a frame at 320x200, playing the test's script on
-E1L1 (`test-duke3d`), from 14.2 M in the first build: the inner loops
-rewritten for c4's machine, and 64-bit arithmetic done in 32 bits, with
-the same frames (c4's `docs/duke3d-port.md` §9). In the page, C4IX at
+6.98 M VM instructions a frame at 320x200, playing the test's script on
+E1L1 (`test-duke3d`), from 14.2 M in the first build, and 7.12 M playing
+the Atomic Edition's first demo, which has more sloped floors: the inner
+loops rewritten for c4's machine, and 64-bit arithmetic done in 32 bits,
+with the same frames (c4's `docs/duke3d-port.md` §9). In the page, C4IX at
 320x200 (2026-11-11, Chrome on a Chromebook): 12.9 fps as the page starts
 (paced at 100 MHz, with the MMU); at `?mhz=400&cpus=1`, 16.2 fps with the
 MMU and 20.3 without. A frame's cost grows with its pixels: 640x480 is
@@ -91,7 +92,9 @@ under `#ifdef C4DUKE`:
 - `duke-display.c`, in place of `Engine/src/display.c` (Ryan C. Gordon's
   SDL driver for Build), which it follows function by function: the
   8-bit frame and its palette, the mode list, keys as PC scan codes, the
-  mouse's motion and buttons, the timer.
+  mouse's motion and buttons, the timer. A palette is shown as soon as
+  it is set, as SDL's 8-bit screen showed it: the game fades in and out
+  by the palette alone.
 - `duke-gui.c`, `duke-c4ix.c`, `duke-bare.c`, `duke-host.c`: the
   platforms, as Quake's. Frames go out 8-bit, as `GUI_BLIT8` with their
   palette, scaled to a 4:3 display at least 640 wide.
@@ -109,24 +112,34 @@ under `#ifdef C4DUKE`:
 
 In Chocolate Duke3D's files:
 
-- `draw.c`: the wall, masked-wall and floor loops written again for c4's
-  machine (a column at a time, locals, no unsigned `>>`, which c4lc makes
-  a call), and the per-pixel `pixelsAllowed` count, which never ran out,
-  gone.
+- `draw.c`: the wall, masked-wall, floor and sloped-floor loops written
+  again for c4's machine (a column at a time, locals, no unsigned `>>`,
+  which c4lc makes a call, and no 64-bit products), and the per-pixel
+  `pixelsAllowed` count, which never ran out, gone.
 - `fixedPoint_math.h`, `.c`: `scale`, `mulscale` and `divscale` in 32
   bits where the value fits, and otherwise by long division and a product
   of 16-bit halves, with the same values as the `int64_t` code: c4 has no
-  64-bit arithmetic, and each `int64_t` operation was a call.
+  64-bit arithmetic, and each `int64_t` operation was a call. The
+  `mulscaleN`, `dmulscaleN`, `tmulscaleN` and `divscaleN` wrappers are
+  macros, one call where c4lc made two of them.
 - `game.c`: the GRP is found by `duke-sum.c`; the program's own CRC
   (only for network games) is not taken; the CON file's name is an
-  ordinary string (c4lc read `{"GAME.CON"}` as an empty one).
+  ordinary string (c4lc read `{"GAME.CON"}` as an empty one); a quit goes
+  straight back to the desktop or the prompt, without the screens the
+  game showed on its way out (the shareware's ordering information, the
+  TEN advert), which waited for a key in a loop that never slept.
 - `config.c`: 320x200 by default; the mouse's buttons as DOS's setup left
   them when `duke3d.cfg` says nothing of them; a test reads and writes no
   settings.
 - `premap.c`: a level starting starts the test's input; the wait for the
   skill's sound to end lets the card be polled.
 - `tiles.c`: the tile cache is at most 12 MB, as much as DOS gave it,
-  where Chocolate takes the whole of the art's size.
+  where Chocolate takes the whole of the art's size; `setviewtotile` sets
+  a row of the view a column of the tile apart, as Ken's BUILD did, so
+  that low detail (Video Setup's Detail), which draws the view into a
+  tile, no longer scrambles it.
+- `animlib.c`: `CheckAnimStarted`, the test that an `.ANM` was loaded,
+  made where it is needed instead of in a call.
 - `filesystem.c`: the GRP's CRC is read through 64 KB from the heap, not
   a megabyte of BSS; `filelength` for c4.
 - `global.c`: `FixFilePath` no longer writes a `/` over a name's end when
@@ -148,7 +161,8 @@ In Chocolate Duke3D's files:
   runs, built by gcc and by c4lc, on the bare machine, under C4DOS and
   inside C4IX: all must show the same frames, to the checksum of every
   pixel and the palette. Then, inside C4IX, the screen size changed in
-  the game's menu (Options, Video Setup) from 320x200 to 400x300. The
+  the game's menu (Options, Video Setup) from 320x200 to 400x300 and the
+  detail set low, and a quit from the game (F10, Y), which must end it. The
   shareware's own demos were recorded by version 1.3D, which this code
   does not play.
 - `duke3d -sum N -frames N -script -shot N` are the test's: a checksum

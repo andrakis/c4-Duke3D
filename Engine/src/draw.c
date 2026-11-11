@@ -886,6 +886,9 @@ extern int32_t fpuasm;
 #define high32(a) ((int)(((__int64)a&(__int64)0xffffffff00000000)>>32))
 
 //FCS: Render RENDER_SLOPPED_CEILING_AND_FLOOR
+#ifdef C4DUKE
+#define slopevlin c4_unused_slopevlin /* c4: its own, below */
+#endif
 void slopevlin(intptr_t i1, uint32_t i2, int32_t i3, int32_t i4, int32_t i5, int32_t i6)
 {
     bitwisef2i c;
@@ -956,6 +959,9 @@ void slopevlin(intptr_t i1, uint32_t i2, int32_t i3, int32_t i4, int32_t i5, int
 
     } while ((int32_t)ebx > 0);
 }
+#ifdef C4DUKE
+#undef slopevlin
+#endif
 
 
 /* END ---------------  FLOOR/CEILING RENDERING METHOD (USED TO BE HIGHLY OPTIMIZED ASSEMBLY) ----------------------------*/
@@ -970,15 +976,14 @@ void slopevlin(intptr_t i1, uint32_t i2, int32_t i3, int32_t i4, int32_t i5, int
    four columns of vlineasm4 never share a pixel, so the order is free).
    Shift counts are taken as x86 takes them, modulo 32, as gcc's build does.  */
 
-/* x >> s, logically, for 0 <= s < 32: (int)x >> s & lsrmask(s) */
-static inline int32_t lsrmask (int32_t s)
-{
-    return s ? (int32_t)(0x7fffffff >> (s - 1)) : -1;
-}
+/* x >> s, logically, for 0 <= s < 32: (int)x >> s & LSRMASK(s). A
+   macro, made once a call of each loop where a function was a call more;
+   S is always a plain variable, so reading it twice is safe */
+#define LSRMASK(s) ((s) ? (int32_t)(0x7fffffff >> ((s) - 1)) : -1)
 
 int32_t vlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t numPixels, int32_t vplce, uint8_t* texture, uint8_t* dest)
 {
-    int32_t sh = mach3_al, mask = lsrmask(mach3_al), bpl = bytesperline;
+    int32_t sh = mach3_al, mask = LSRMASK(sh), bpl = bytesperline;
     uint32_t v = (uint32_t)vplce;
     numPixels++;
     while (numPixels)
@@ -993,7 +998,7 @@ int32_t vlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t numPixels, int3
 
 int32_t mvlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t i3, int32_t vplce, uint8_t* texture, uint8_t  *dest)
 {
-    int32_t sh = machmv, mask = lsrmask(machmv), bpl = bytesperline, t;
+    int32_t sh = machmv, mask = LSRMASK(sh), bpl = bytesperline, t;
     uint32_t v = (uint32_t)vplce;
     for (; i3 >= 0; i3--)
     {
@@ -1010,7 +1015,7 @@ int32_t mvlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t i3, int32_t vp
    vplce, vince, bufplce and palookupoffse */
 void vlineasm4(int32_t count, intptr_t framebuffer)
 {
-    int32_t i, n, sh = mach3_al, mask = lsrmask(mach3_al), bpl = bytesperline;
+    int32_t i, n, sh = mach3_al, mask = LSRMASK(sh), bpl = bytesperline;
     uint32_t v, inc;
     uint8_t *p, *tex, *pal;
     for (i = 0; i < 4; i++)
@@ -1032,7 +1037,7 @@ void vlineasm4(int32_t count, intptr_t framebuffer)
 
 void mvlineasm4(int32_t count, intptr_t framebufferOffset)
 {
-    int32_t i, n, sh = machmv, mask = lsrmask(machmv), bpl = bytesperline, t;
+    int32_t i, n, sh = machmv, mask = LSRMASK(sh), bpl = bytesperline, t;
     uint32_t v, inc;
     uint8_t *p, *tex, *pal;
     for (i = 0; i < 4; i++)
@@ -1057,8 +1062,8 @@ void mvlineasm4(int32_t count, intptr_t framebufferOffset)
 /* a floor's or ceiling's row, right to left: shld(i5 >> shifter, i4, bits) */
 void hlineasm4(int32_t numPixels, int32_t shade, uint32_t i4, uint32_t i5, uint8_t *dest)
 {
-    int32_t sh1 = ((256 - machxbits_al) & 0x1f), m1 = lsrmask(sh1);
-    int32_t bits = bitsSetup, sh2 = (32 - bitsSetup) & 31, m2 = lsrmask(sh2);
+    int32_t sh1 = ((256 - machxbits_al) & 0x1f), m1 = LSRMASK(sh1);
+    int32_t bits = bitsSetup, sh2 = (32 - bitsSetup) & 31, m2 = LSRMASK(sh2);
     uint32_t a = i5, b = i4, da = (uint32_t)asm1, db = (uint32_t)asm2;
     uint8_t *texture = textureSetup, *pal = globalpalwritten + (shade & 0xffffff00);
     numPixels++;
@@ -1070,5 +1075,61 @@ void hlineasm4(int32_t numPixels, int32_t shade, uint32_t i4, uint32_t i5, uint8
         b -= db;
         numPixels--;
     }
+}
+
+/* a sloped floor's or ceiling's column, I4 pixels up the screen from I1,
+   with 1/z worked out from the float's bits every eight. The same pixels as
+   the loop above, which made every unsigned shift a call (<lsr>), both
+   steps a 64-bit product and its low word (two calls more), and an index
+   an unsigned division. Its two register tricks show in the frames and are
+   kept: the x step's low byte is the count of the eight's pixels still to
+   draw, and from the second pixel on the y step's is the last pixel drawn. */
+void slopevlin(intptr_t i1, uint32_t i2, int32_t i3, int32_t i4, int32_t i5, int32_t i6)
+{
+    bitwisef2i c;
+    int32_t sh2 = slopemach_ah2 & 31, sh1 = slopemach_ah1 & 31, m1 = LSRMASK(sh1);
+    int32_t mask = slopemach_edx, bpl = slopemach_ecx;
+    int32_t u, sgn, k, n, bx, vy, pix, left;
+    uint32_t z, r, xs, yhi, ystep, esi, edi;
+    uint8_t *tex = (uint8_t *)slopemach_ebx, *dest = (uint8_t *)(i1 - bpl), *pal;
+    int32_t *pals = (int32_t *)i3;
+    float a = (float)(int32_t) asm3 + asm2_f;
+    z = i2;
+    esi = (uint32_t)i5 + (uint32_t)globalx3 * (z << 3);
+    edi = (uint32_t)i6 + (uint32_t)globaly3 * (z << 3);
+    left = i4;
+    do {
+        c.f = a;
+        u = (int32_t)c.i;
+        fpuasm = u;
+        sgn = u >> 31;
+        /* the exponent, (u << 1) >> 24; the mantissa's top eleven bits,
+           ((u << 1) & 0xffe000) >> 11 / 4 */
+        k = (((u >> 23) & 255) - 2) & 31;
+        r = (uint32_t)(((reciptable[(u >> 12) & 0x7ff] >> k) & (k ? 0x7fffffff >> (k - 1) : -1)) ^ sgn);
+        xs = (uint32_t)globalx3 * (r - z);
+        ystep = (uint32_t)globaly3 * (r - z);
+        z = r;
+        a += asm2_f;
+        asm4 = left;
+        n = left >= 8 ? 8 : (left & 0xff);
+        xs &= ~0xffu;
+        yhi = ystep & ~0xffu;
+        while (n)
+        {
+            bx = ((int32_t)esi >> sh2) & mask;
+            esi += xs | (uint32_t)n;
+            vy = ((int32_t)edi >> sh1) & m1;
+            edi += ystep;
+            pal = (uint8_t *)*pals;
+            pals--;
+            pix = pal[(vy & ~0xff) | tex[bx + vy]];
+            ystep = yhi | (uint32_t)pix;
+            dest += bpl;
+            *dest = (uint8_t)pix;
+            n--;
+        }
+        left = asm4 - 8;
+    } while (left > 0);
 }
 #endif

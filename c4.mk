@@ -80,9 +80,10 @@ PHONY += duke3d-data
 # the palette. With sound and music off (/ns /nm): what plays does not
 # change what is drawn. Then, inside C4IX, the screen size changed as a
 # player changes it, in the game's menu (Options, Video Setup: -menu, from
-# 320x200 to 400x300), and played on at the new size.
+# 320x200 to 400x300), the detail set low there, and played on so; then
+# quit from the game (F10, Y), which must end it.
 DUKE3D_RUN  := /v1 /l1 /s2 /ns /nm -sum 50 -frames 600 -script
-DUKE3D_RES  := /v1 /l1 /s2 /ns /nm -sum 20 -frames 280 -menu
+DUKE3D_RES  := /v1 /l1 /s2 /ns /nm -sum 20 -frames 400 -menu
 test-duke3d: duke3d-data duke3d-host c4bb-images test-libc-bare
 	@rm -rf .duke3d_t && mkdir -p .duke3d_t
 	@cp $(DUKE3D_DATA)/DUKE3DSW.GRP $(DUKE3D_DATA)/DUKE.RTS .duke3d_t/
@@ -101,6 +102,8 @@ test-duke3d: duke3d-data duke3d-host c4bb-images test-libc-bare
 	   || { echo "test-duke3d: $$w's frames differ:"; tail -5 .duke3d_t/$$w.out; exit 1; }; done
 	@grep '^sum\|^timedemo' .duke3d_t/res.out | cmp -s .duke3d_t/res.txt - \
 	   || { echo "test-duke3d: with the screen size changed in the menu, the frames differ:"; tail -5 .duke3d_t/res.out; exit 1; }
+	@grep -q '^duke3d: quit from the game' .duke3d_t/res.out \
+	   || { echo "test-duke3d: the game's quit did not end it:"; tail -5 .duke3d_t/res.out; exit 1; }
 	@grep -A1 '^timedemo' .duke3d_t/dos.out | grep -Eq '^A(:\\)?>C4DOS version' \
 	   || { echo "test-duke3d: C4DOS did not come back to its prompt:"; tail -5 .duke3d_t/dos.out; exit 1; }
 	@rm -rf .duke3d_t

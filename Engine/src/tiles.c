@@ -52,7 +52,15 @@ void setviewtotile(short tilenume, int32_t tileWidth, int32_t tileHeight)
     j = 0;
     for(i=0; i<=tileWidth; i++) {
         ylookup[i] = j;
+#ifdef C4DUKE
+        // c4: a row of the view is a column of the tile, tileHeight bytes
+        // long, as bytesperline says below and Ken's BUILD had it. A
+        // step of tileWidth drew low detail's view (a 100x160 tile) over
+        // itself, and the screen came out scrambled
+        j += tileHeight;
+#else
         j += tileWidth;
+#endif
     }
     setBytesPerLine(tileHeight);
     setviewcnt++;

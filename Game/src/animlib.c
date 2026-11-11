@@ -55,11 +55,20 @@ static boolean Anim_Started = false;
 //
 //****************************************************************************
 
+#ifdef C4DUKE
+// c4: the test where it is made, rather than a call to make it: a call for
+// a flag that is always set (each caller runs after ANIM_LoadAnim) cost
+// more than the test. Five a frame of an .ANM (the logos, the episodes'
+// ends), none while a level or a demo plays.
+#define CheckAnimStarted(funcname) \
+   do { if (!Anim_Started) Error(EXIT_FAILURE, "ANIMLIB_%s: Anim has not been initialized\n", funcname); } while (0)
+#else
 void CheckAnimStarted ( char  * funcname )
    {
    if (!Anim_Started)
       Error(EXIT_FAILURE, "ANIMLIB_%s: Anim has not been initialized\n",funcname);
    }
+#endif
 //****************************************************************************
 //
 //      findpage ()

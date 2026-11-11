@@ -64,6 +64,8 @@ void duke_sleep (int ms)
 
 // ---- the command line, before the game reads it ----
 
+static void quitted (void);
+
 void duke_sum_args (int argc, char **argv)
 {
 	int i;
@@ -73,6 +75,7 @@ void duke_sum_args (int argc, char **argv)
 		{
 			dosum = i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9' ? atoi (argv[i + 1]) : 1;
 			duke_testing = 1;
+			atexit (quitted);
 		}
 		else if (!strcmp (argv[i], "-frames") && i + 1 < argc)
 			stopat = atoi (argv[i + 1]);
@@ -162,7 +165,9 @@ static int steps[][5] = {
 };
 // -menu: the screen size changed in the game, as a player does it: Esc,
 // Options (the menu's fourth line), Video Setup (its fifth), the size one
-// to the right twice (320x200 to 400x300), Enter, and out again
+// to the right twice (320x200 to 400x300), Enter; then Detail (two lines
+// down) to low, and out again; then a walk, and a quit from the game (F10,
+// Y), which must end the program
 static int menusteps[][5] = {
 	{ S_KEY,  20,  22, 27, 0 },	// esc: the menu
 	{ S_KEY,  30,  32, 40, 0 },	// down
@@ -177,10 +182,15 @@ static int menusteps[][5] = {
 	{ S_KEY,  96,  98, 39, 0 },	// right: the next size
 	{ S_KEY, 104, 106, 39, 0 },
 	{ S_KEY, 112, 114, 13, 0 },	// enter: that size
-	{ S_KEY, 130, 132, 27, 0 },	// esc, esc, esc
-	{ S_KEY, 140, 142, 27, 0 },
-	{ S_KEY, 150, 152, 27, 0 },
-	{ S_KEY, 160, 220, 38, 0 },	// up: walk, at the new size
+	{ S_KEY, 120, 122, 40, 0 },	// down, down: detail
+	{ S_KEY, 126, 128, 40, 0 },
+	{ S_KEY, 134, 136, 13, 0 },	// enter: low
+	{ S_KEY, 144, 146, 27, 0 },	// esc, esc, esc
+	{ S_KEY, 154, 156, 27, 0 },
+	{ S_KEY, 164, 166, 27, 0 },
+	{ S_KEY, 174, 234, 38, 0 },	// up: walk, at the new size and low detail
+	{ S_KEY, 244, 246, 121, 0 },	// F10: quit?
+	{ S_KEY, 254, 256, 89, 0 },	// y: yes
 	{ 0, 0, 0, 0, 0 }
 };
 static int level0 = -1;		// the frame the level was first drawn
@@ -234,9 +244,12 @@ void duke_sum_palette (uint8_t *palette)
 	memcpy (pal, palette, 1024);
 }
 
+static int ended;
+
 static void done (void)
 {
 	uint32_t ms;
+	ended = 1;
 	ms = duke_plat_ms () - ms0;
 	if (!ms)
 		ms = 1;
@@ -245,6 +258,16 @@ static void done (void)
 	printf ("timedemo: %d frames, checksum %08x\n", frames, sum);
 	duke_plat_close ();
 	exit (0);
+}
+
+// a test's game that ended itself, by its menu's quit (-menu does)
+static void quitted (void)
+{
+	if (ended)
+		return;
+	ended = 1;
+	printf ("timedemo: %d frames, checksum %08x\n", frames, sum);
+	printf ("duke3d: quit from the game\n");
 }
 
 void duke_sum_frame (uint8_t *pixels, int w, int h)
