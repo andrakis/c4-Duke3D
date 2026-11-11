@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include "duke-plat.h"
 
 int duke_testing;
@@ -102,8 +103,9 @@ void duke_sum_args (int argc, char **argv)
 
 // The shareware episode is DUKE3DSW.GRP on c4's disks, so that the
 // person's own DUKE3D.GRP never hides it. With -home the game plays theirs
-// alone, added with the page's Uploads: C4IX lists those in /home, and on
-// the bare machine and under C4DOS they are on the disk by their names.
+// alone, added with the page's Uploads: in the folder they can be put in
+// for Duke first, then in /home -- on C4IX /home/duke3d and /home, on the
+// bare machine and under C4DOS duke3d/ at the disk's root, and the root.
 
 static int found (char *name)
 {
@@ -116,10 +118,16 @@ static int found (char *name)
 
 void duke_find_grp (char *path)
 {
-	static char *mine[] = { "/home/DUKE3D.GRP", "/home/duke3d.grp", "/home/Duke3D.grp", "DUKE3D.GRP", "duke3d.grp", 0 };
+	// C4IX has a /home; the bare machine and C4DOS do not, and there the
+	// host finds "/home/X" it does not have by its last part, at the root
+	static char *mine[] = { "/home/duke3d/duke3d.grp", "/home/duke3d/DUKE3D.GRP",
+				"/home/DUKE3D.GRP", "/home/duke3d.grp", "/home/Duke3D.grp",
+				"DUKE3D.GRP", "duke3d.grp", 0 };
+	static char *disk[] = { "duke3d/duke3d.grp", "duke3d/DUKE3D.GRP", "DUKE3D.GRP", "duke3d.grp", 0 };
 	static char *ours[] = { "DUKE3DSW.GRP", "duke3dsw.grp", 0 };
+	struct stat st;
 	char **n;
-	for (n = home ? mine : ours; *n; n++)
+	for (n = !home ? ours : stat ("/home", &st) == 0 ? mine : disk; *n; n++)
 		if (found (*n))
 		{
 			strcpy (path, *n);
@@ -128,7 +136,8 @@ void duke_find_grp (char *path)
 		}
 	if (home)
 		printf ("duke3d -home plays your own DUKE3D.GRP, from Duke Nukem 3D 1.3D, 1.4 or 1.5\n"
-			"(Atomic Edition): add it with the page's Uploads, then start it again.\n");
+			"(Atomic Edition): add it with the page's Uploads (in /home/duke3d or /home),\n"
+			"then start it again.\n");
 	else
 		printf ("duke3d: the shareware episode, DUKE3DSW.GRP, is not here\n");
 	path[0] = 0;
