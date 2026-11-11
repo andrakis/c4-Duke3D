@@ -4,7 +4,8 @@
 Atomic Edition source with Ken Silverman's Build engine, its assembly
 rewritten in C), compiled by c4lc and played on libjs's whole display,
 with its sound effects on libjs's sound card and its music on the card's
-OPL. The shareware episode, L.A. Meltdown, ships with it; the full game
+OPL, or, when the person chooses General MIDI music, as General MIDI on
+the card's MIDI port. The shareware episode, L.A. Meltdown, ships with it; the full game
 plays from the person's own `DUKE3D.GRP`. It is played from the keyboard
 and the mouse.
 
@@ -102,8 +103,12 @@ under `#ifdef C4DUKE`:
   SDL) and `sdl_midi.c`: Rise of the Triad's (c4's `games/rott`). Effects
   on the card's eight sample channels, which the host mixes; music by
   audiolib's own MIDI player and AdLib driver on the card's OPL, with the
-  game's own timbre bank (`D3DTIMBR.TMB` in the GRP). `duke-nosnd.c` is
-  the silent one for gcc's build.
+  game's own timbre bank (`D3DTIMBR.TMB` in the GRP). When the card has
+  a General MIDI synth on its MIDI port (the page's Configuration, Music:
+  General MIDI; c4's `libjs/README.md`), the player's events go there
+  instead, as they went to an MPU-401 and a Sound Canvas, and Apogee's
+  extended MIDI picks each song's General MIDI tracks (`midi.c`).
+  `duke-nosnd.c` is the silent one for gcc's build.
 - `duke-sum.c`: the clock, one `rand` for every build, the GRP's name, the
   test's input, and every frame checksummed.
 - `inc/`: the headers C4IX's libc lacks (`stdint.h`, `stdbool.h`,

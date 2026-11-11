@@ -45,6 +45,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "debugio.h"
 
 extern int MUSIC_SoundDevice;
+#ifdef C4DUKE
+extern int c4_music_gm;
+#endif
 
 static const int _MIDI_CommandLengths[ NUM_MIDI_CHANNELS ] =
    {
@@ -1786,8 +1789,9 @@ static void _MIDI_InitEMIDI
 
    type = EMIDI_GeneralMIDI;
 #ifdef C4DUKE
-   // the AdLib's tracks: libjs's OPL is the card (c4/duke-snd.c)
-   type = EMIDI_Adlib;
+   // the AdLib's tracks: libjs's OPL is the card (c4/duke-snd.c); or, when
+   // the card has a General MIDI synth, the General MIDI ones
+   type = c4_music_gm ? EMIDI_GeneralMIDI : EMIDI_Adlib;
 #else
    switch( MUSIC_SoundDevice )
       {

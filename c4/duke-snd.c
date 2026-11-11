@@ -20,6 +20,12 @@
 // stamped with the stream's time, until the card's stream is a quarter of
 // a second ahead.
 //
+// When the card has a General MIDI synth on its MIDI port (the person
+// chose General MIDI music), the player's events go there instead, as
+// they went to an MPU-401 and the Sound Canvas behind it, and midi.c
+// plays the score's General MIDI tracks: the game's music as it was
+// written, rather than as the AdLib could play it.
+//
 // With no card, or no OPL, the game plays silent rather than stopping, as
 // it would on a DOS machine that had none.
 
@@ -97,6 +103,21 @@ int DPMI_UnlockMemory(void *address, unsigned length) { return 0; }
 int DPMI_UnlockMemoryRegion(void *start, void *end) { return 0; }
 unsigned long DisableInterrupts(void) { return 0; }
 void RestoreInterrupts(unsigned long flags) { (void) flags; }
+
+// General MIDI: when the card has a synth on its MIDI port (the person
+// chose General MIDI), midi.c's events go there as they went to an
+// MPU-401 (mpu401.c), each a message on the card's stream, and midi.c
+// plays the score's General MIDI tracks (EMIDI) instead of its AdLib's.
+// midi.c sets the channels' volumes itself, as it did for an MPU-401.
+int c4_music_gm;                         // midi.c's too: it picks the General MIDI tracks
+static void gm_noteoff(int ch, int key, int vel) { snd_midi(0x80 | ch, key, vel); }
+static void gm_noteon(int ch, int key, int vel) { snd_midi(0x90 | ch, key, vel); }
+static void gm_polyaftertouch(int ch, int key, int pressure) { snd_midi(0xa0 | ch, key, pressure); }
+static void gm_controlchange(int ch, int number, int value) { snd_midi(0xb0 | ch, number, value); }
+static void gm_programchange(int ch, int program) { snd_midi(0xc0 | ch, program, 0); }
+static void gm_channelaftertouch(int ch, int pressure) { snd_midi(0xd0 | ch, pressure, 0); }
+static void gm_pitchbend(int ch, int lsb, int msb) { snd_midi(0xe0 | ch, lsb, msb); }
+static char gm_on[6] = { (char) 0xf0, 0x7e, 0x7f, 0x09, 0x01, (char) 0xf7 };   // General MIDI System On
 
 // al_midi.c's AdLib, at 0x388 (register) and 0x389 (data): the card's OPL
 static int opl_reg;
@@ -481,18 +502,32 @@ static int fade_rate, fade_length, fade_current, fade_last, fade_end;
 char *MUSIC_ErrorString(int ErrorNumber) {
 	if (ErrorNumber == MUSIC_Warning || ErrorNumber == MUSIC_Error) ErrorNumber = music_error;
 	if (ErrorNumber == MUSIC_Ok) return "Music ok.";
-	if (ErrorNumber == MUSIC_SoundCardError) return "The machine has no sound card with an OPL.";
+	if (ErrorNumber == MUSIC_SoundCardError) return "The machine has no sound card with an OPL or a MIDI synth.";
 	if (ErrorNumber == MUSIC_MidiError) return "Error playing MIDI file.";
 	return "Unknown Music error code.";
 }
 int MUSIC_Init(int SoundCard, int Address) {
 	int i;
 	(void) SoundCard; (void) Address;
-	if (!snd_present() || !(snd_caps() & SND_HAS_OPL)) { music_error = MUSIC_SoundCardError; return MUSIC_Ok; }
+	c4_music_gm = snd_present() && (snd_caps() & SND_HAS_MIDI);
+	if (!c4_music_gm && (!snd_present() || !(snd_caps() & SND_HAS_OPL))) { music_error = MUSIC_SoundCardError; return MUSIC_Ok; }
 	snd_clock(1000000);                     // snd_wait in microseconds
 	for (i = 0; i < 128; i++) MIDI_PatchMap[i] = i;
-	AL_Init(0);                             // an AdLib whatever the card (al_midi.c)
 	memset(&al_funcs, 0, sizeof al_funcs);
+	if (c4_music_gm) {
+		snd_midi_bytes(gm_on, sizeof gm_on);
+		al_funcs.NoteOff = gm_noteoff;
+		al_funcs.NoteOn = gm_noteon;
+		al_funcs.PolyAftertouch = gm_polyaftertouch;
+		al_funcs.ControlChange = gm_controlchange;
+		al_funcs.ProgramChange = gm_programchange;
+		al_funcs.ChannelAftertouch = gm_channelaftertouch;
+		al_funcs.PitchBend = gm_pitchbend;
+		MIDI_SetMidiFuncs(&al_funcs);
+		music_on = 1;
+		return MUSIC_Ok;
+	}
+	AL_Init(0);                             // an AdLib whatever the card (al_midi.c)
 	al_funcs.NoteOff = AL_NoteOff;
 	al_funcs.NoteOn = AL_NoteOn;
 	al_funcs.ControlChange = AL_ControlChange;
@@ -506,11 +541,11 @@ int MUSIC_Shutdown(void) {
 	if (!music_on) return MUSIC_Ok;
 	MIDI_StopSong();
 	MUSIC_StopFade();
-	AL_Shutdown();
+	if (!c4_music_gm) AL_Shutdown();
 	music_on = 0;
 	return MUSIC_Ok;
 }
-void MUSIC_SetMaxFMMidiChannel(int channel) { if (music_on) AL_SetMaxMidiChannel(channel); }
+void MUSIC_SetMaxFMMidiChannel(int channel) { if (music_on && !c4_music_gm) AL_SetMaxMidiChannel(channel); }
 void MUSIC_SetVolume(int volume) {
 	volume = volume < 0 ? 0 : volume > 255 ? 255 : volume;
 	if (music_on) MIDI_SetVolume(volume);
