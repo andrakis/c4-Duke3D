@@ -8,7 +8,7 @@
 #ifndef _INCLUDE_A_H_
 #define _INCLUDE_A_H_
 
-#ifdef _WIN32
+#ifdef _MSC_VER   // MSVC lacked inttypes.h; MinGW has its own
    #include "windows/inttypes.h"
 #else
    #include <inttypes.h>

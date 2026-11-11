@@ -93,7 +93,13 @@ void _dos_getdate(struct dosdate_t *date);
 
 // FCS: Game.c features calls to mkdir without the proper flags.
 // Giving all access is ugly but it is just game OK !
+#ifdef __MINGW32__
+// MinGW, the 32-bit host build on Windows (c4's docs/windows.md): its
+// mkdir takes no mode
+#define mkdir(X) _mkdir(X)
+#else
 #define mkdir(X) mkdir(X,0777)
+#endif
 
 #define getch getchar
 

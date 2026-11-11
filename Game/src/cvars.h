@@ -4,7 +4,7 @@
 #define REGCONVAR(varname, varhelp, variable, function) CVAR_RegisterCvar(varname, varhelp, &variable, &function)
 #define REGCONFUNC(varname, varhelp, function) CVAR_RegisterCvar(varname, varhelp, NULL, &function)
 
-#ifdef _WIN32
+#ifdef _MSC_VER   // MSVC lacked inttypes.h; MinGW has its own
    #include "../../Engine/src/windows/inttypes.h"
 #else
    #include <inttypes.h>

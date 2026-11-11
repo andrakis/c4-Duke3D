@@ -37,7 +37,7 @@ Prepared for public release: 03/21/2003 - Charlie Wiederhold, 3D Realms
 #include <malloc.h>
 #endif
 
-#ifdef _WIN32
+#ifdef _MSC_VER   // MSVC lacked inttypes.h; MinGW has its own
 #include "../../Engine/src/windows/inttypes.h"
 #else
 #include <inttypes.h>

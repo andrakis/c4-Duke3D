@@ -86,4 +86,17 @@
 #endif
 #endif
 
+#ifdef __MINGW32__
+// MinGW, the 32-bit host build on Windows (c4's docs/windows.md),
+// declares these itself, with char * where Duke's take uint8_t *. Its
+// declarations are behind us (the headers above); Duke's own are renamed
+// past them.
+#define strlwr     duke_strlwr
+#define strupr     duke_strupr
+#define itoa       duke_itoa
+#define ltoa       duke_ltoa
+#define ultoa      duke_ultoa
+#define filelength duke_filelength
+#endif
+
 #endif

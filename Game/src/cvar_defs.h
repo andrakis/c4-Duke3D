@@ -1,7 +1,7 @@
 #ifndef _CVARDEFS_H_
 #define _CVARDEFS_H_
 
-#ifdef _WIN32
+#ifdef _MSC_VER   // MSVC lacked inttypes.h; MinGW has its own
    #include "../../Engine/src/windows/inttypes.h"
 #else
    #include <inttypes.h>

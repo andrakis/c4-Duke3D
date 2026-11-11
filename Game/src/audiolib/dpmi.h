@@ -31,7 +31,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef __DPMI_H
 #define __DPMI_H
 
-#ifdef _WIN32
+#ifdef _MSC_VER   // MSVC lacked inttypes.h; MinGW has its own
 #include "../../../Engine/src/windows/inttypes.h"
 #else
 #include <inttypes.h>
