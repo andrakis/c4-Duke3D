@@ -81,9 +81,13 @@ PHONY += duke3d-data
 # change what is drawn. Then, inside C4IX, the screen size changed as a
 # player changes it, in the game's menu (Options, Video Setup: -menu, from
 # 320x200 to 400x300), the detail set low there, and played on so; then
-# quit from the game (F10, Y), which must end it.
+# quit from the game (F10, Y), which must end it. And on the bare machine
+# once more with the music on, on a sound card with a General MIDI synth
+# (cli.js --midi, duke-snd.c): the same frames, and the music as MIDI,
+# drums and all (midi-notes.mjs).
 DUKE3D_RUN  := /v1 /l1 /s2 /ns /nm -sum 50 -frames 600 -script
 DUKE3D_RES  := /v1 /l1 /s2 /ns /nm -sum 20 -frames 400 -menu
+DUKE3D_GM   := /v1 /l1 /s2 /ns -sum 50 -frames 600 -script
 test-duke3d: duke3d-data duke3d-host c4bb-images test-libc-bare
 	@rm -rf .duke3d_t && mkdir -p .duke3d_t
 	@cp $(DUKE3D_DATA)/DUKE3DSW.GRP $(DUKE3D_DATA)/DUKE.RTS .duke3d_t/
@@ -94,12 +98,18 @@ test-duke3d: duke3d-data duke3d-host c4bb-images test-libc-bare
 	     > ../../../../.duke3d_t/bare.out 2>/dev/null & \
 	   printf 'duke3d $(DUKE3D_RUN)\nver\n' | timeout 1500 node ../../../../libjs/cli.js -m 64 -d . ../c4dos32.c4r \
 	     > ../../../../.duke3d_t/dos.out 2>/dev/null; wait; }
-	@printf 'duke3d $(DUKE3D_RUN)\nexit\n' | timeout 1500 node libjs/cli.js -m 64 -d src/c4bb/images/disk src/c4bb/images/c4ix32.c4r \
-	   2>/dev/null > .duke3d_t/c4ix.out
+	@{ cd src/c4bb/images/games && timeout 1500 node ../../../../libjs/cli.js -m 64 -d . --midi ../../../../.duke3d_t/gm.txt duke3d.c4r \
+	     $(DUKE3D_GM) > ../../../../.duke3d_t/gm.out 2>/dev/null; } & \
+	 printf 'duke3d $(DUKE3D_RUN)\nexit\n' | timeout 1500 node libjs/cli.js -m 64 -d src/c4bb/images/disk src/c4bb/images/c4ix32.c4r \
+	   2>/dev/null > .duke3d_t/c4ix.out; wait
 	@printf 'duke3d $(DUKE3D_RES)\nexit\n' | timeout 1500 node libjs/cli.js -m 64 -d src/c4bb/images/disk src/c4bb/images/c4ix32.c4r \
 	   2>/dev/null > .duke3d_t/res.out
 	@for w in bare dos c4ix; do grep '^sum\|^timedemo' .duke3d_t/$$w.out | cmp -s .duke3d_t/host.txt - \
 	   || { echo "test-duke3d: $$w's frames differ:"; tail -5 .duke3d_t/$$w.out; exit 1; }; done
+	@grep '^sum\|^timedemo' .duke3d_t/gm.out | cmp -s .duke3d_t/host.txt - \
+	   || { echo "test-duke3d: with General MIDI music, the frames differ:"; tail -5 .duke3d_t/gm.out; exit 1; }
+	@m=$$(node libjs/tests/src/midi-notes.mjs .duke3d_t/gm.txt 1000 4) && echo "test-duke3d: General MIDI: $$m" \
+	   || { echo "test-duke3d: the General MIDI music did not play: $$m"; exit 1; }
 	@grep '^sum\|^timedemo' .duke3d_t/res.out | cmp -s .duke3d_t/res.txt - \
 	   || { echo "test-duke3d: with the screen size changed in the menu, the frames differ:"; tail -5 .duke3d_t/res.out; exit 1; }
 	@grep -q '^duke3d: quit from the game' .duke3d_t/res.out \
