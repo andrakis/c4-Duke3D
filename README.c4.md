@@ -34,13 +34,15 @@ the frame it went down in is let go after the next one.
 `duke3d -home` (Go > Games > Duke Nukem 3D (your files); the page's
 `?system=duke3d-full` on the bare machine) plays your own `DUKE3D.GRP`:
 from version 1.3D, 1.4 (Plutonium Pak) or 1.5 (Atomic Edition), which
-the game tells apart by its CRC. Add it with the page's Uploads, then
-start the game.
+the game tells apart by its CRC. Add it with the page's Uploads, in the
+folder `/home/duke3d` (one uploaded to `/home` itself plays too), then
+start the game. It looks in Duke's folder first, then in `/home`
+(`duke_find_grp`, `c4/duke-sum.c`):
 
-- On C4IX the uploads are in `/home`, and the game opens
-  `/home/DUKE3D.GRP`.
+- On C4IX, `/home/duke3d/duke3d.grp`, then `/home/DUKE3D.GRP`.
 - On the bare machine and under C4DOS the uploads are on the disk by
-  their names, so the game opens `DUKE3D.GRP`.
+  their names: `duke3d/duke3d.grp` (under C4DOS, `A:\DUKE3D\DUKE3D.GRP`),
+  then `DUKE3D.GRP`.
 
 The shareware episode is `DUKE3DSW.GRP` on c4's disks, so that your
 `DUKE3D.GRP` never hides it: `duke3d` alone always plays the shareware.
