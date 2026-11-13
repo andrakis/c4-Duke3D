@@ -376,9 +376,18 @@ struct animwalltype
 extern struct animwalltype animwall[MAXANIMWALLS];
 extern short numanimwalls,probey,lastprobey;
 
+#ifdef C4DUKE
+// c4: declared here, and defined once (global.c). c4lc and c4rlink give
+// every unit that includes a definition its own copy, where gcc's -fcommon
+// merges them into one
+extern char  *mymembuf;
+extern uint8_t  typebuflen;
+extern char typebuf[41];
+#else
 char  *mymembuf;
 extern uint8_t  typebuflen;
 char typebuf[41];
+#endif
 extern uint8_t  MusicPtr[72000];
 extern int32_t msx[2048],msy[2048];
 extern short cyclers[MAXCYCLERS][6],numcyclers;

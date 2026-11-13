@@ -179,10 +179,22 @@ struct _KeyMapping
 	kb_scancode key2;
 	
 	/* other mappings go here */
+#ifdef C4DUKE
+};
+// c4: declared here, and defined once (control.c). c4lc and c4rlink give
+// every unit that includes a definition its own copy, where gcc's -fcommon
+// merges them into one: the menus' copy of the
+// bindings and duke3d.cfg's were never the game's, so Keys Setup showed
+// "..." for every key, Mouse Setup every button, and duke3d.cfg had none.
+extern struct _KeyMapping KeyMapping[MAXGAMEBUTTONS];
+extern int32 MouseMapping[MAXMOUSEBUTTONS];
+extern int32 MouseDigitalAxeMapping[MAXMOUSEAXES][2];  // [axesX/Y][directionLeft/Right or directionUp/Down]
+#else
 } KeyMapping[MAXGAMEBUTTONS];
 
 int32 MouseMapping[MAXMOUSEBUTTONS];
 int32 MouseDigitalAxeMapping[MAXMOUSEAXES][2];  // [axesX/Y][directionLeft/Right or directionUp/Down]
+#endif
 
 
 int  ACTION(int i);

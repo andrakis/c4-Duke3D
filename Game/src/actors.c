@@ -27,7 +27,11 @@ Prepared for public release: 03/21/2003 - Charlie Wiederhold, 3D Realms
 #include "duke3d.h"
 
 extern int32_t numenvsnds;
+#ifdef C4DUKE
+extern uint8_t  actor_tog;	// c4: defined in game.c, where gcc merged this one into it
+#else
 uint8_t  actor_tog;
+#endif
 
 void updateinterpolations()  //Stick at beginning of domovethings
 {

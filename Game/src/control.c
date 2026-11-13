@@ -25,6 +25,13 @@ Prepared for public release: 03/21/2003 - Charlie Wiederhold, 3D Realms
 //-------------------------------------------------------------------------
 #include "duke3d.h"
 #include "control.h"
+
+#ifdef C4DUKE
+// c4: the one definition of each (control.h)
+struct _KeyMapping KeyMapping[MAXGAMEBUTTONS];
+int32 MouseMapping[MAXMOUSEBUTTONS];
+int32 MouseDigitalAxeMapping[MAXMOUSEAXES][2];
+#endif
 #include "mouse.h"
 #include "joystick.h"
 

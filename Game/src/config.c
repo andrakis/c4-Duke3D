@@ -284,6 +284,34 @@ void CONFIG_SetDefaults( void )
 ===================
 */
 
+#ifdef C4DUKE
+// c4: whether duke3d.cfg is one that c4's builds before this one wrote,
+// whose KeyMapping, MouseMapping and MouseDigitalAxeMapping were config.c's
+// own copies, never set (control.h): it names no key for any action, and
+// Move_Forward, the first, for every mouse button and direction. Read as it
+// is, it leaves no key doing anything. Such a file has the controls a new
+// one has, and the next save writes them.
+static int32 c4_nokeys( int32 handle )
+   {
+   int32 i, n;
+   char  k1[80], k2[80];
+   if (handle == -1)
+      return 0;
+   n = SCRIPT_NumberEntries( handle, "KeyDefinitions" );
+   if (n == 0)
+      return 0;
+   for (i = 0; i < n; i++)
+      {
+      memset(k1,0,sizeof(k1));
+      memset(k2,0,sizeof(k2));
+      SCRIPT_GetDoubleString( handle, "KeyDefinitions", SCRIPT_Entry( handle, "KeyDefinitions", i ), k1, k2 );
+      if (k1[0] || k2[0])
+         return 0;
+      }
+   return 1;
+   }
+#endif
+
 void CONFIG_ReadKeys( void )
    {
    int32 i;
@@ -307,6 +335,10 @@ void CONFIG_ReadKeys( void )
 
    
        numkeyentries = SCRIPT_NumberEntries( scripthandle, "KeyDefinitions" );
+#ifdef C4DUKE
+   if (c4_nokeys( scripthandle ))
+      numkeyentries = 0;	// the defaults above stand
+#endif
 
    for (i=0;i<numkeyentries;i++)  // i = number in which the functions appear in duke3d.cfg
       {
@@ -366,7 +398,7 @@ void CONFIG_SetupMouse( int32 scripthandle )
 #ifdef C4DUKE
    // only for a duke3d.cfg that says nothing of the controls: what one says,
    // even nothing for a button, stands
-   int32 none = scripthandle == -1 || SCRIPT_NumberEntries( scripthandle, "Controls" ) == 0;
+   int32 none = scripthandle == -1 || SCRIPT_NumberEntries( scripthandle, "Controls" ) == 0 || c4_nokeys( scripthandle );
 #endif
 
    for (i=0;i<MAXMOUSEBUTTONS;i++)
@@ -403,11 +435,17 @@ void CONFIG_SetupMouse( int32 scripthandle )
       sprintf(str,"MouseDigitalAxes%d_0",i);
       memset(temp,0,sizeof(temp));
       SCRIPT_GetString(scripthandle, "Controls", str,temp);
+#ifdef C4DUKE
+      if (none) temp[0] = 0;	// none, as with no duke3d.cfg
+#endif
       function = CONFIG_FunctionNameToNum(temp);
       CONTROL_MapDigitalAxis( i, function, 0 );
       sprintf(str,"MouseDigitalAxes%d_1",i);
       memset(temp,0,sizeof(temp));
       SCRIPT_GetString(scripthandle, "Controls", str,temp);
+#ifdef C4DUKE
+      if (none) temp[0] = 0;	// none, as with no duke3d.cfg
+#endif
       function = CONFIG_FunctionNameToNum(temp);
       CONTROL_MapDigitalAxis( i, function, 1 );
       sprintf(str,"MouseAnalogScale%d",i);

@@ -140,7 +140,10 @@ int32_t avgfvel, avgsvel, avgavel, avghorz, avgbits;
 
 
 input inputfifo[MOVEFIFOSIZ][MAXPLAYERS];
+#ifndef C4DUKE
+// c4: already above, and c4lc made a second array of the second
 input recsync[RECSYNCBUFSIZ];
+#endif
 
 int32_t movefifosendplc;
 

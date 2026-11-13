@@ -14,7 +14,11 @@
 #include "../../Game/src/global.h"
 #include <strings.h>
 
+#ifdef C4DUKE
+extern char game_dir[512];	// c4: defined in cache.c, where gcc merged this one into it
+#else
 char game_dir[512];
+#endif
 
 //The multiplayer module in game.dll needs direct access to the crc32 (sic).
 int32_t groupefil_crc32[MAXGROUPFILES];

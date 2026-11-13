@@ -137,7 +137,14 @@ In Chocolate Duke3D's files:
   TEN advert), which waited for a key in a loop that never slept.
 - `config.c`: 320x200 by default; the mouse's buttons as DOS's setup left
   them when `duke3d.cfg` says nothing of them; a test reads and writes no
-  settings.
+  settings; a `duke3d.cfg` that names no key for any action, as c4's
+  builds before the one below wrote, gets the default controls.
+- `control.h`, `duke3d.h`, `cvar_defs.h`, `display.h`, and `filesystem.c`,
+  `actors.c`, `global.c`, `engine.c`: every global is defined once. These
+  defined some in a header, or in two files, which gcc's `-fcommon` merges
+  into one; c4lc and c4rlink give each unit its copy, so the menus'
+  `KeyMapping` and `duke3d.cfg`'s were never the game's: Keys Setup showed
+  `...` for every key, and a saved `duke3d.cfg` bound none.
 - `premap.c`: a level starting starts the test's input; the wait for the
   skill's sound to end lets the card be polled.
 - `tiles.c`: the tile cache is at most 12 MB, as much as DOS gave it,

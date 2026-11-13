@@ -25,6 +25,11 @@
 #include "platform.h"
 #include "build.h"
 #include "display.h"
+
+// the one definition of each (display.h); nothing here sets them, as the
+// SDL driver did, so CheckParm and the like see no arguments, as before
+int _argc;
+char **_argv;
 #include "fixedPoint_math.h"
 #include "engine.h"
 #include "network.h"

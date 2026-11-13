@@ -26,18 +26,26 @@ void CVARDEFS_FunctionHelp(void* var);
 //
 // Variable declarations
 //
-int g_CV_console_text_color;
-int g_CV_num_console_lines;
-int g_CV_classic;
-int g_CV_TransConsole;
-int g_CV_DebugJoystick;
-int g_CV_DebugSound;
-int g_CV_DebugFileAccess;
-uint32_t sounddebugActiveSounds;
-uint32_t sounddebugAllocateSoundCalls;
-uint32_t sounddebugDeallocateSoundCalls;
+#ifdef C4DUKE
+// c4: declared here, and defined once (cvar_defs.c). c4lc and c4rlink give
+// every unit that includes a definition its own copy, where gcc's -fcommon
+// merges them into one
+#define CVAR_DEFINE extern
+#else
+#define CVAR_DEFINE
+#endif
+CVAR_DEFINE int g_CV_console_text_color;
+CVAR_DEFINE int g_CV_num_console_lines;
+CVAR_DEFINE int g_CV_classic;
+CVAR_DEFINE int g_CV_TransConsole;
+CVAR_DEFINE int g_CV_DebugJoystick;
+CVAR_DEFINE int g_CV_DebugSound;
+CVAR_DEFINE int g_CV_DebugFileAccess;
+CVAR_DEFINE uint32_t sounddebugActiveSounds;
+CVAR_DEFINE uint32_t sounddebugAllocateSoundCalls;
+CVAR_DEFINE uint32_t sounddebugDeallocateSoundCalls;
 
 
-int g_CV_CubicInterpolation;
+CVAR_DEFINE int g_CV_CubicInterpolation;
 
 #endif

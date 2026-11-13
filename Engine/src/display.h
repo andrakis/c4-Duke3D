@@ -11,8 +11,16 @@
 #include "platform.h"
 
 /* set these in your _platform_init() implementation. */
+#ifdef C4DUKE
+/* c4: declared here, and defined once (c4/duke-display.c). c4lc and c4rlink give
+   every unit that includes a definition its own copy, where gcc's -fcommon
+   merges them into one */
+extern int _argc;
+extern char  **_argv;
+#else
 int _argc;
 char  **_argv;
+#endif
 
 /* !!! gads, look at all the namespace polution... */
 extern int32_t xres, yres, bytesperline, imageSize, maxpages;

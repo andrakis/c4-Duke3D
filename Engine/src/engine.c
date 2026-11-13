@@ -272,7 +272,10 @@ static int32_t mirrorsx1, mirrorsy1, mirrorsx2, mirrorsy2;
 
 int32_t totalclocklock;
 
+#ifndef C4DUKE
+// c4: build.h defines it here (EXTERN), and c4lc made a second of this one
 uint16_t mapCRC;
+#endif
 
 #include "draw.h"
 
