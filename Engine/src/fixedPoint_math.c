@@ -76,12 +76,11 @@ void qinterpolatedown16short(int32_t* bufptr, int32_t num, int32_t val, int32_t 
    int64_t a call, and a division a loop of them, a bit at a time, about
    6,000 instructions. These give exactly the values the int64_t code does
    (fixedPoint_math.h uses them when the shorter ways there do not apply)
-   with c4's own 32-bit operations. c4 has no logical shift either (c4lc
-   makes an unsigned >> a call too), so there are none here: an arithmetic
-   shift and a mask instead (C4_LSR). */
+   with c4's own 32-bit operations.  */
 
-/* x >> s, logically, for 0 < s < 32 */
-#define C4_LSR(x, s) ((uint32_t)(((int32_t)(x) >> (s)) & (0x7fffffff >> ((s) - 1))))
+/* x >> s, logically, for 0 < s < 32: c4's LSR (an arithmetic shift and a
+   mask while c4 had no logical shift) */
+#define C4_LSR(x, s) ((uint32_t)(x) >> (s))
 
 /* how far b (0 < b < 2^30) shifts left and stays below 2^31 */
 static int c4_room (int32_t b)

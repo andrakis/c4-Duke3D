@@ -968,27 +968,23 @@ void slopevlin(intptr_t i1, uint32_t i2, int32_t i3, int32_t i4, int32_t i5, int
 
 #ifdef C4DUKE
 /* ---------------  c4's versions of the inner loops above ----------------------------
-   The same pixels, drawn the way c4's stack machine does them fastest: c4
-   has no logical shift, so an unsigned value shifted right was a call (c4lc's
-   <lsr>) for every pixel; here it is an arithmetic shift and a mask made once.
+   The same pixels, drawn the way c4's stack machine does them fastest.
    Each loop keeps what it needs in locals rather than reading the four
    columns' global arrays for every pixel, and draws a column at a time (the
-   four columns of vlineasm4 never share a pixel, so the order is free).
-   Shift counts are taken as x86 takes them, modulo 32, as gcc's build does.  */
-
-/* x >> s, logically, for 0 <= s < 32: (int)x >> s & LSRMASK(s). A
-   macro, made once a call of each loop where a function was a call more;
-   S is always a plain variable, so reading it twice is safe */
-#define LSRMASK(s) ((s) ? (int32_t)(0x7fffffff >> ((s) - 1)) : -1)
+   four columns of vlineasm4 never share a pixel, so the order is free). An
+   unsigned value shifted right by a variable is c4's LSR, one instruction
+   (it was a call to c4lc's <lsr>, then an arithmetic shift and a mask).
+   Shift counts are taken as x86 takes them, modulo 32, as gcc's build does
+   and as LSR does.  */
 
 int32_t vlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t numPixels, int32_t vplce, uint8_t* texture, uint8_t* dest)
 {
-    int32_t sh = mach3_al, mask = LSRMASK(sh), bpl = bytesperline;
+    int32_t sh = mach3_al, bpl = bytesperline;
     uint32_t v = (uint32_t)vplce;
     numPixels++;
     while (numPixels)
     {
-        *dest = palookupoffse[texture[((int32_t)v >> sh) & mask]];
+        *dest = palookupoffse[texture[v >> sh]];
         v += (uint32_t)vince;
         dest += bpl;
         numPixels--;
@@ -998,11 +994,11 @@ int32_t vlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t numPixels, int3
 
 int32_t mvlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t i3, int32_t vplce, uint8_t* texture, uint8_t  *dest)
 {
-    int32_t sh = machmv, mask = LSRMASK(sh), bpl = bytesperline, t;
+    int32_t sh = machmv, bpl = bytesperline, t;
     uint32_t v = (uint32_t)vplce;
     for (; i3 >= 0; i3--)
     {
-        t = texture[((int32_t)v >> sh) & mask];
+        t = texture[v >> sh];
         if (t != 255)
             *dest = palookupoffse[t];
         v += (uint32_t)vince;
@@ -1015,7 +1011,7 @@ int32_t mvlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t i3, int32_t vp
    vplce, vince, bufplce and palookupoffse */
 void vlineasm4(int32_t count, intptr_t framebuffer)
 {
-    int32_t i, n, sh = mach3_al, mask = LSRMASK(sh), bpl = bytesperline;
+    int32_t i, n, sh = mach3_al, bpl = bytesperline;
     uint32_t v, inc;
     uint8_t *p, *tex, *pal;
     for (i = 0; i < 4; i++)
@@ -1027,7 +1023,7 @@ void vlineasm4(int32_t count, intptr_t framebuffer)
         inc = vince[i];
         for (n = count; n > 0; n--)
         {
-            *p = pal[tex[((int32_t)v >> sh) & mask]];
+            *p = pal[tex[v >> sh]];
             v += inc;
             p += bpl;
         }
@@ -1037,7 +1033,7 @@ void vlineasm4(int32_t count, intptr_t framebuffer)
 
 void mvlineasm4(int32_t count, intptr_t framebufferOffset)
 {
-    int32_t i, n, sh = machmv, mask = LSRMASK(sh), bpl = bytesperline, t;
+    int32_t i, n, sh = machmv, bpl = bytesperline, t;
     uint32_t v, inc;
     uint8_t *p, *tex, *pal;
     for (i = 0; i < 4; i++)
@@ -1049,7 +1045,7 @@ void mvlineasm4(int32_t count, intptr_t framebufferOffset)
         inc = vince[i];
         for (n = count; n > 0; n--)
         {
-            t = tex[((int32_t)v >> sh) & mask];
+            t = tex[v >> sh];
             if (t != 255)
                 *p = pal[t];
             v += inc;
@@ -1062,14 +1058,14 @@ void mvlineasm4(int32_t count, intptr_t framebufferOffset)
 /* a floor's or ceiling's row, right to left: shld(i5 >> shifter, i4, bits) */
 void hlineasm4(int32_t numPixels, int32_t shade, uint32_t i4, uint32_t i5, uint8_t *dest)
 {
-    int32_t sh1 = ((256 - machxbits_al) & 0x1f), m1 = LSRMASK(sh1);
-    int32_t bits = bitsSetup, sh2 = (32 - bitsSetup) & 31, m2 = LSRMASK(sh2);
+    int32_t sh1 = ((256 - machxbits_al) & 0x1f);
+    int32_t bits = bitsSetup, sh2 = (32 - bitsSetup) & 31;
     uint32_t a = i5, b = i4, da = (uint32_t)asm1, db = (uint32_t)asm2;
     uint8_t *texture = textureSetup, *pal = globalpalwritten + (shade & 0xffffff00);
     numPixels++;
     while (numPixels)
     {
-        *dest = pal[texture[((uint32_t)(((int32_t)a >> sh1) & m1) << bits) | (uint32_t)(((int32_t)b >> sh2) & m2)]];
+        *dest = pal[texture[((a >> sh1) << bits) | (b >> sh2)]];
         dest--;
         a -= da;
         b -= db;
@@ -1087,7 +1083,7 @@ void hlineasm4(int32_t numPixels, int32_t shade, uint32_t i4, uint32_t i5, uint8
 void slopevlin(intptr_t i1, uint32_t i2, int32_t i3, int32_t i4, int32_t i5, int32_t i6)
 {
     bitwisef2i c;
-    int32_t sh2 = slopemach_ah2 & 31, sh1 = slopemach_ah1 & 31, m1 = LSRMASK(sh1);
+    int32_t sh2 = slopemach_ah2 & 31, sh1 = slopemach_ah1 & 31;
     int32_t mask = slopemach_edx, bpl = slopemach_ecx;
     int32_t u, sgn, k, n, bx, vy, pix, left;
     uint32_t z, r, xs, yhi, ystep, esi, edi;
@@ -1106,7 +1102,7 @@ void slopevlin(intptr_t i1, uint32_t i2, int32_t i3, int32_t i4, int32_t i5, int
         /* the exponent, (u << 1) >> 24; the mantissa's top eleven bits,
            ((u << 1) & 0xffe000) >> 11 / 4 */
         k = (((u >> 23) & 255) - 2) & 31;
-        r = (uint32_t)(((reciptable[(u >> 12) & 0x7ff] >> k) & (k ? 0x7fffffff >> (k - 1) : -1)) ^ sgn);
+        r = ((uint32_t)reciptable[(u >> 12) & 0x7ff] >> k) ^ (uint32_t)sgn;
         xs = (uint32_t)globalx3 * (r - z);
         ystep = (uint32_t)globaly3 * (r - z);
         z = r;
@@ -1119,7 +1115,7 @@ void slopevlin(intptr_t i1, uint32_t i2, int32_t i3, int32_t i4, int32_t i5, int
         {
             bx = ((int32_t)esi >> sh2) & mask;
             esi += xs | (uint32_t)n;
-            vy = ((int32_t)edi >> sh1) & m1;
+            vy = (int32_t)(edi >> sh1);
             edi += ystep;
             pal = (uint8_t *)*pals;
             pals--;
