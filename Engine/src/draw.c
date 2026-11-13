@@ -975,7 +975,10 @@ void slopevlin(intptr_t i1, uint32_t i2, int32_t i3, int32_t i4, int32_t i5, int
    unsigned value shifted right by a variable is c4's LSR, one instruction
    (it was a call to c4lc's <lsr>, then an arithmetic shift and a mask).
    Shift counts are taken as x86 takes them, modulo 32, as gcc's build does
-   and as LSR does.  */
+   and as LSR does. The column and row loops draw four pixels a turn, then
+   the rest one at a time: on c4's stack machine a turn of a loop is a
+   compare, a branch, a decrement and a jump, a third of what such a pixel
+   costs. The same pixels in the same order.  */
 
 int32_t vlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t numPixels, int32_t vplce, uint8_t* texture, uint8_t* dest)
 {
@@ -1021,7 +1024,14 @@ void vlineasm4(int32_t count, intptr_t framebuffer)
         pal = palookupoffse[i];
         v = vplce[i];
         inc = vince[i];
-        for (n = count; n > 0; n--)
+        for (n = count; n >= 4; n -= 4)
+        {
+            *p = pal[tex[v >> sh]]; v += inc; p += bpl;
+            *p = pal[tex[v >> sh]]; v += inc; p += bpl;
+            *p = pal[tex[v >> sh]]; v += inc; p += bpl;
+            *p = pal[tex[v >> sh]]; v += inc; p += bpl;
+        }
+        for (; n > 0; n--)
         {
             *p = pal[tex[v >> sh]];
             v += inc;
@@ -1043,7 +1053,14 @@ void mvlineasm4(int32_t count, intptr_t framebufferOffset)
         pal = palookupoffse[i];
         v = vplce[i];
         inc = vince[i];
-        for (n = count; n > 0; n--)
+        for (n = count; n >= 4; n -= 4)
+        {
+            t = tex[v >> sh]; if (t != 255) *p = pal[t]; v += inc; p += bpl;
+            t = tex[v >> sh]; if (t != 255) *p = pal[t]; v += inc; p += bpl;
+            t = tex[v >> sh]; if (t != 255) *p = pal[t]; v += inc; p += bpl;
+            t = tex[v >> sh]; if (t != 255) *p = pal[t]; v += inc; p += bpl;
+        }
+        for (; n > 0; n--)
         {
             t = tex[v >> sh];
             if (t != 255)
@@ -1063,6 +1080,15 @@ void hlineasm4(int32_t numPixels, int32_t shade, uint32_t i4, uint32_t i5, uint8
     uint32_t a = i5, b = i4, da = (uint32_t)asm1, db = (uint32_t)asm2;
     uint8_t *texture = textureSetup, *pal = globalpalwritten + (shade & 0xffffff00);
     numPixels++;
+    while (numPixels >= 4)
+    {
+        dest[0] = pal[texture[((a >> sh1) << bits) | (b >> sh2)]]; a -= da; b -= db;
+        dest[-1] = pal[texture[((a >> sh1) << bits) | (b >> sh2)]]; a -= da; b -= db;
+        dest[-2] = pal[texture[((a >> sh1) << bits) | (b >> sh2)]]; a -= da; b -= db;
+        dest[-3] = pal[texture[((a >> sh1) << bits) | (b >> sh2)]]; a -= da; b -= db;
+        dest -= 4;
+        numPixels -= 4;
+    }
     while (numPixels)
     {
         *dest = pal[texture[((a >> sh1) << bits) | (b >> sh2)]];
