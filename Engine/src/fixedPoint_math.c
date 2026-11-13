@@ -165,21 +165,25 @@ int32_t c4_scale (int32_t a, int32_t b, int32_t c, int *done)
 	return ((a < 0) != (b < 0)) != (c < 0) ? (int32_t)(0u - q) : (int32_t)q;
 }
 
-/* (int32_t)(((int64_t)a * b) >> s), 0 < s < 32 */
+/* (int32_t)(((int64_t)a * b) >> s), 0 < s < 32: the product in 16-bit
+   digits, the high ones signed, so that no operand needs its sign taken
+   off and no product its sign put back -- any a and b, INT32_MIN too */
 int32_t c4_mulscale (int32_t a, int32_t b, int32_t s, int *done)
 {
-	uint32_t hi, lo;
+	int32_t ah, bh, m1, m2, hi;
+	uint32_t al, bl, lo, t;
 	*done = 0;
-	if (a == INT32_MIN || b == INT32_MIN || s <= 0 || s >= 32)
+	if (s <= 0 || s >= 32)
 		return 0;
-	c4_umul64 (a, b, &hi, &lo);
-	if ((a < 0) != (b < 0))
-	{
-		/* the product's two's complement, 64 bits */
-		hi = ~hi + (lo == 0);
-		lo = 0u - lo;
-	}
+	ah = a >> 16; al = a & 0xffff;
+	bh = b >> 16; bl = b & 0xffff;
+	m1 = ah * (int32_t)bl;			/* each within 2^31 */
+	m2 = (int32_t)al * bh;
+	lo = al * bl;				/* below 2^32 */
+	hi = ah * bh + (m1 >> 16) + (m2 >> 16);
+	t = lo + ((uint32_t)m1 << 16); hi += t < lo;
+	lo = t + ((uint32_t)m2 << 16); hi += lo < t;
 	*done = 1;
-	return (int32_t)(C4_LSR (lo, s) | (hi << (32 - s)));
+	return (int32_t)((lo >> s) | ((uint32_t)hi << (32 - s)));
 }
 #endif
