@@ -116,6 +116,9 @@ void setuprhlineasm4(int32_t i1, int32_t i2, int32_t i3, int32_t i4, int32_t i5,
 } 
 
 
+#ifdef C4DUKE
+#define rhlineasm4 c4_unused_rhlineasm4 /* c4: its own, below */
+#endif
 void rhlineasm4(int32_t i1, uint8_t* texture, int32_t i3, uint32_t i4, uint32_t i5, int32_t dest)
 {
     uint32_t ebp = dest - i1;
@@ -149,6 +152,10 @@ void rhlineasm4(int32_t i1, uint8_t* texture, int32_t i3, uint32_t i4, uint32_t 
 	    numPixels--;
     } while (numPixels);
 }
+
+#ifdef C4DUKE
+#undef rhlineasm4
+#endif
 
 static int32_t rmmach_eax;
 static int32_t rmmach_ebx;
@@ -1069,6 +1076,52 @@ void mvlineasm4(int32_t count, intptr_t framebufferOffset)
             p += bpl;
         }
         vplce[i] = v;
+    }
+}
+
+/* the tilted screen's row, right to left from DEST-1, I1 pixels: game.c
+   draws the view into a tile and that back turned (dorotatesprite), all of
+   it through here while rotscrnang is set -- the player dead, knocked about
+   or looking aside. Each pixel steps the texture back by rmach_ecx, one
+   more when the y step borrows and rmach_esi more when the x step does.
+   Chocolate Duke3D found each borrow as (v + d) < v, an unsigned compare,
+   which c4lc makes by flipping both sides' sign bits. Kept with their sign
+   bits flipped (v ^ 0x80000000 is v + 2^31), the two steps compare signed,
+   one instruction, and step as they did. The palette's row is the texel's
+   byte over i3's top three, so it is one pointer for the whole row. Four
+   pixels a turn, then the rest. The same pixels in the same order. */
+void rhlineasm4(int32_t i1, uint8_t* texture, int32_t i3, uint32_t i4, uint32_t i5, int32_t dest)
+{
+    uint32_t da = (uint32_t)rmach_eax, db = (uint32_t)rmach_ebx;
+    int32_t ax = (int32_t)(da ^ 0x80000000u), bx = (int32_t)(db ^ 0x80000000u);
+    uint32_t x = i4 ^ 0x80000000u, y = i5 ^ 0x80000000u;
+    int32_t c = rmach_ecx, s = rmach_esi, n = i1;
+    uint8_t *p = (uint8_t *)(intptr_t)dest - 1;
+    uint8_t *pal = (uint8_t *)(intptr_t)((uint32_t)i3 & 0xffffff00u) + rmach_edx;
+    if (n <= 0) return;
+    while (n >= 4)
+    {
+        p[0] = pal[*texture]; texture -= c;
+        if ((int32_t)y < bx) texture--; if ((int32_t)x < ax) texture -= s; x -= da; y -= db;
+        p[-1] = pal[*texture]; texture -= c;
+        if ((int32_t)y < bx) texture--; if ((int32_t)x < ax) texture -= s; x -= da; y -= db;
+        p[-2] = pal[*texture]; texture -= c;
+        if ((int32_t)y < bx) texture--; if ((int32_t)x < ax) texture -= s; x -= da; y -= db;
+        p[-3] = pal[*texture]; texture -= c;
+        if ((int32_t)y < bx) texture--; if ((int32_t)x < ax) texture -= s; x -= da; y -= db;
+        p -= 4;
+        n -= 4;
+    }
+    while (n)
+    {
+        *p = pal[*texture];
+        texture -= c;
+        if ((int32_t)y < bx) texture--;
+        if ((int32_t)x < ax) texture -= s;
+        x -= da;
+        y -= db;
+        p--;
+        n--;
     }
 }
 
