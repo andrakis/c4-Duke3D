@@ -300,7 +300,12 @@ int xyzsound(short num,short i,int32_t x,int32_t y,int32_t z)
         FXDevice == NumSoundCards ||
         ( (soundm[num]&8) && ud.lockout ) ||
         SoundToggle == 0 ||
+#ifdef C4DUKE
+        // c4: a sprite's sound with four of it playing replaces the oldest (below)
+        ( Sound[num].num > 3 && PN == MUSICANDSFX ) ||
+#else
         Sound[num].num > 3 ||
+#endif
         FX_VoiceAvailable(soundpr[num]) == 0 ||
         (ps[myconnectindex].timebeforeexit > 0 && ps[myconnectindex].timebeforeexit <= 26*3) ||
         ps[myconnectindex].gm&MODE_MENU) return -1;
@@ -371,9 +376,23 @@ int xyzsound(short num,short i,int32_t x,int32_t y,int32_t z)
 
     if( Sound[num].num > 0 && PN != MUSICANDSFX )
     {
+#ifdef C4DUKE
+        // c4: the sprite's own sound of this kind stops, wherever its entry
+        // is, as the game meant. Others' play on, up to the four it keeps
+        // track of; a fifth stops the oldest. The original stopped the
+        // newest as soon as two were playing (stopsound): with the counts
+        // kept true, an explosion in a fight then cut one a tenth of a
+        // second old, and with the DOS game's counts (TestCallBack) one
+        // that had only just begun, every other time.
+        for(j=0;j<Sound[num].num && SoundOwner[num][j].i != i;j++);
+        if( j < Sound[num].num ) stopsoundat(num,j);
+        else if( Sound[num].num > 3 ) stopsoundat(num,0);
+        else if( badguy(&sprite[i]) && sprite[i].extra <= 0 ) stopsoundat(num,0);
+#else
         if( SoundOwner[num][0].i == i ) stopsound(num);
         else if( Sound[num].num > 1 ) stopsound(num);
         else if( badguy(&sprite[i]) && sprite[i].extra <= 0 ) stopsound(num);
+#endif
     }
 
     if( PN == APLAYER && sprite[i].yvel == screenpeek )
@@ -506,6 +525,18 @@ void stopsound(short num)
     }
 }
 
+#ifdef C4DUKE
+// c4: the sound of this kind that entry j plays (0 the oldest)
+void stopsoundat(short num, short j)
+{
+    if(j < Sound[num].num)
+    {
+        FX_StopSound(SoundOwner[num][j].voice);
+        testcallback(num);
+    }
+}
+#endif
+
 void stopenvsound(short num,short i)
 {
     short j, k;
@@ -602,6 +633,64 @@ void pan3dsound(void)
     }
 }
 
+#ifdef C4DUKE
+// c4: a voice of sound NUM has ended (the driver's callback, as audiolib's
+// was): its entry in SoundOwner -- the one whose voice the driver no
+// longer holds -- comes out, and those after it move down, so that the
+// first is always the oldest. The original took out the last entry,
+// whichever voice had ended. And the game calls testcallback (below)
+// after its own FX_StopSound, whose callback has already been here: in
+// the DOS game, whose linker did not tell testcallback from TestCallBack,
+// that took out a second entry. Either way the counts fell behind what
+// played, sounds went on that nothing tracked or moved with their
+// sprites, and the next of a kind cut one that had only just begun.
+int c4_fx_held(int32_t handle);    // duke-snd.c: the driver holds this voice still
+
+static short c4_ended(int32_t num)
+{
+    short j;
+    for(j=0;j<Sound[num].num;j++)
+        if(!c4_fx_held(SoundOwner[num][j].voice)) return j;
+    return -1;
+}
+
+void TestCallBack(int32_t num)
+{
+    short i,j,k;
+
+    if(num < 0)
+    {
+        if(lumplockbyte[-num] >= 200)
+            lumplockbyte[-num]--;
+        return;
+    }
+
+    // a voice of sound() ended, which has no entry: only its lock
+    if((j = c4_ended(num)) >= 0)
+    {
+        k = Sound[num].num;
+        i = SoundOwner[num][j].i;
+        if( (soundm[num]&16) == 0 && i >= 0 && sprite[i].picnum == MUSICANDSFX &&
+            sector[sprite[i].sectnum].lotag < 3 && sprite[i].lotag < 999 )
+            hittype[i].temp_data[0] = 0;
+        for(;j<k-1;j++)
+            SoundOwner[num][j] = SoundOwner[num][j+1];
+        Sound[num].num--;
+        SoundOwner[num][k-1].i = -1;
+    }
+
+    Sound[num].lock--;
+}
+
+// after the game's own FX_StopSound: the callback has let that voice go,
+// unless the stop found no voice to stop; then its entry goes here
+void testcallback(uint32_t num)
+{
+    if((int32_t)num >= 0 && c4_ended(num) >= 0)
+        TestCallBack(num);
+}
+
+#else
 void TestCallBack(int32_t num)
 {
     short tempi,tempj,tempk;
@@ -647,6 +736,7 @@ void testcallback(uint32_t num)
 //    STUBBED("wtf?");
     TestCallBack(num);
 }
+#endif
 
 
 void clearsoundlocks(void)

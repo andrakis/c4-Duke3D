@@ -78,3 +78,4 @@ void MUSIC_RerouteMidiChannel (int channel, int cdecl (*function) (int event, in
 void MUSIC_RegisterTimbreBank (unsigned char *timbres) {}
 void PlayMusic (char *filename) {}
 void duke_snd_poll (void) {}
+int c4_fx_held (int32_t handle) { return 0; }

@@ -5,7 +5,7 @@
 // which plays the same audiolib on the same card.
 //
 // The effects are the GRP's VOC and WAV sounds. They play as they are on
-// the card's eight sample channels, at their own rate moved by the pitch
+// the card's sixteen sample channels, at their own rate moved by the pitch
 // the game asks for, panned by angle and distance as audiolib's mixer
 // (multivoc.c) panned them.
 //
@@ -137,9 +137,11 @@ typedef struct {
 	char *data;              // the samples, unsigned 8-bit mono
 	int len, rate, vol;
 	char *own;               // converted samples this voice allocated, or 0
+	unsigned started;        // when it started, in sounds started: the oldest is the least
 } fxvoice;
 static fxvoice voice[NVOICES];
 static int next_handle = 1;
+static unsigned fx_started;
 static int fx_volume = 255, fx_reverse;
 static void (*fx_callback)(int32_t);
 
@@ -164,14 +166,26 @@ static void fx_reap(void) {
 		}
 }
 
-// a channel for a sound of this priority: a free one, else the lowest
-// playing at that priority or below; -1 if there is none
+// a voice playing at nothing on either side: a sound panned out of
+// hearing, which losing costs nothing
+static int fx_silent(int i) { return voice[i].vol == 0; }
+
+// a channel for a sound of this priority: a free one; else, as audiolib's
+// MV_AllocVoice chose, one of the lowest priority playing, if that is at
+// most this sound's -- of those, one that cannot be heard, else the one
+// that started first (audiolib kept its voices in that order). -1 if
+// there is none. (The lowest of the channels' numbers, which this took
+// before, could be a sound that had only just begun.)
 static int fx_channel(int priority) {
 	int i, low = -1;
 	fx_reap();
 	for (i = 0; i < NVOICES; i++) if (!voice[i].handle) return i;
-	for (i = 0; i < NVOICES; i++)
-		if (voice[i].priority <= priority && (low < 0 || voice[i].priority < voice[low].priority)) low = i;
+	for (i = 0; i < NVOICES; i++) {
+		if (voice[i].priority > priority) continue;
+		if (low < 0 || voice[i].priority < voice[low].priority) { low = i; continue; }
+		if (voice[i].priority > voice[low].priority || fx_silent(low)) continue;
+		if (fx_silent(i) || (int) (voice[i].started - voice[low].started) < 0) low = i;
+	}
 	return low;
 }
 
@@ -181,6 +195,11 @@ static int fx_find(int handle) {
 	for (i = 0; i < NVOICES; i++) if (voice[i].handle == handle) return i;
 	return -1;
 }
+
+// sounds.c's: whether this voice is still the driver's (playing, or
+// played out and not yet let go), so that the game's callback can tell
+// which of a sound's voices has ended
+int c4_fx_held(int32_t handle) { return fx_find(handle) >= 0; }
 
 // left and right (0-255 each) as the card wants them, the volume and the
 // reversal applied
@@ -326,6 +345,7 @@ static int fx_start(char *data, int len, int rate, char *own, int pitchoffset, i
 	v->handle = next_handle++;
 	if (next_handle > 0x7fff) next_handle = 1;
 	v->priority = priority;
+	v->started = fx_started++;
 	v->callbackval = callbackval;
 	v->loop = loop;
 	v->data = data; v->len = len; v->own = own;

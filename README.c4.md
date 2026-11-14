@@ -103,7 +103,9 @@ under `#ifdef C4DUKE`:
   palette, scaled to a 4:3 display at least 640 wide.
 - `duke-snd.c`, in place of audiolib's `fx_man.c` and `multivoc.c` (on
   SDL) and `sdl_midi.c`: Rise of the Triad's (c4's `games/rott`). Effects
-  on the card's eight sample channels, which the host mixes; music by
+  on the card's sixteen sample channels, which the host mixes; with all
+  of them playing, a new sound takes the oldest of the lowest priority
+  (one panned out of hearing first), as audiolib's mixer took it; music by
   audiolib's own MIDI player and AdLib driver on the card's OPL, with the
   game's own timbre bank (`D3DTIMBR.TMB` in the GRP). When the card has
   a General MIDI synth on its MIDI port (the page's Configuration, Music:
@@ -159,6 +161,19 @@ In Chocolate Duke3D's files:
 - `global.c`: `FixFilePath` no longer writes a `/` over a name's end when
   it cannot open a directory (upstream's bug; a bare machine has none).
 - `rts.c`: `malloc` for `alloca`, which c4lc has not.
+- `sounds.c`: the count of each sound playing, and who plays it, kept
+  true. When a voice ended, the game took out its sound's last entry,
+  whichever had ended, and after its own stops it took out a second (the
+  DOS game's linker did not tell `testcallback` from `TestCallBack`). So
+  the counts fell behind: sounds played on that nothing tracked, and the
+  next of a kind stopped one that had only just begun -- in a fight, an
+  explosion after a few hundredths of a second. Now the entry of the
+  voice that ended goes, and a stop takes out one. With the counts true,
+  the game's rule that a third of a sound stops the newest of the two
+  playing cut a fight's explosions a tenth of a second in, so up to four
+  of a sound play together (as many as the game keeps track of), and a
+  fifth stops the oldest. A sprite's own sound still cuts its last one,
+  as the game meant: the pistol's and the chaingun's shots.
 - `platform.h`, `unix_compat.h`, `global.h`: `rand` is `duke_rand`; the
   byte order and the file modes C4IX's libc does not name.
 - audiolib's `midi.c`, `al_midi.c`, `_midi.h`: as Rise of the Triad's —

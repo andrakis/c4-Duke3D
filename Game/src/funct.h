@@ -56,6 +56,9 @@ extern void sound(short num);
 extern int spritesound(uint16_t num,short i);
 //#line "sounds.c" 469
 extern void stopsound(short num);
+#ifdef C4DUKE
+extern void stopsoundat(short num, short j);
+#endif
 //#line "sounds.c" 478
 extern void stopenvsound(short num,short i);
 //#line "sounds.c" 494
