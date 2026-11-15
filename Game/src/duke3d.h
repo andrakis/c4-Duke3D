@@ -89,6 +89,11 @@ Prepared for public release: 03/21/2003 - Charlie Wiederhold, 3D Realms
 extern int duke_testing;
 void duke_sum_args(int argc, char **argv);
 void duke_sum_level(void);
+// the Video Setup menu's ACCELERATED (config.c's Screen Setup, Accelerated):
+// draw.c draws with the machine's accelerators when it has them and this is on
+extern int duke_accel;
+int accel_avail(void);
+void accel_set(int on);
 #endif
 
 #include "function.h"

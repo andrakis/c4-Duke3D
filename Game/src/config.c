@@ -655,6 +655,10 @@ void readsavenames(void)
 
 //int32 dukever13;
 
+#ifdef C4DUKE
+int duke_accel = 1;     // on unless the setup says otherwise
+#endif
+
 void CONFIG_ReadSetup( void )
 {
    int32 dummy;
@@ -730,6 +734,11 @@ void CONFIG_ReadSetup( void )
    SCRIPT_GetNumber( scripthandle, "Screen Setup", "Out",&ud.lockout);
    SCRIPT_GetNumber( scripthandle, "Screen Setup", "ShowFPS",&ud.tickrate);
    ud.tickrate &= 1;
+#ifdef C4DUKE
+   SCRIPT_GetNumber( scripthandle, "Screen Setup", "Accelerated",&duke_accel);
+   duke_accel = duke_accel != 0;
+   accel_set(duke_accel);
+#endif
    SCRIPT_GetNumber( scripthandle, "Misc", "Executions",&ud.executions);
    ud.executions++;
    SCRIPT_GetNumber( scripthandle, "Misc", "RunMode",&ud.auto_run);
@@ -882,6 +891,9 @@ void CONFIG_WriteSetup( void )
    SCRIPT_PutNumber( scripthandle, "Screen Setup", "Messages",ud.fta_on,false,false);
    SCRIPT_PutNumber( scripthandle, "Screen Setup", "Out",ud.lockout,false,false);
    SCRIPT_PutNumber( scripthandle, "Screen Setup", "ShowFPS",ud.tickrate&1,false,false);
+#ifdef C4DUKE
+   SCRIPT_PutNumber( scripthandle, "Screen Setup", "Accelerated",duke_accel,false,false);
+#endif
    SCRIPT_PutNumber( scripthandle, "Screen Setup", "ScreenWidth",xdim,false,false);
    SCRIPT_PutNumber( scripthandle, "Screen Setup", "ScreenHeight",ydim,false,false);
    SCRIPT_PutNumber( scripthandle, "Screen Setup", "Fullscreen",BFullScreen,false,false);

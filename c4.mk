@@ -21,7 +21,7 @@ DUKE3D_HDRS  := $(wildcard $(DUKE3D)/Engine/src/*.h $(DUKE3D)/Game/src/*.h $(DUK
                 $(DUKE3D)/c4/*.h $(DUKE3D)/c4/inc/*.h $(DUKE3D)/c4/inc/sys/*.h) \
                 $(wildcard src/c4ix/libc/include/*.h src/c4ix/libc/include/sys/*.h) \
                 src/c4ix/include/display.h src/c4ix/include/window.h src/c4ix/include/window.c \
-                libjs/guest/gui.h libjs/guest/gui.c libjs/guest/snd.h libjs/guest/snd.c
+                libjs/guest/gui.h libjs/guest/gui.c libjs/guest/snd.h libjs/guest/snd.c libjs/guest/accel.h
 DUKE3D_INC   := -D C4DUKE -D PLATFORM_UNIX -I $(DUKE3D)/c4/inc -I src/c4ix/libc/include -I src/c4ix/include \
                 -I libjs/guest -I $(DUKE3D)/Engine/src -I $(DUKE3D)/Game/src -I $(DUKE3D)/c4
 DUKE3D_CC    := ./c4sp32 -c 400000 src/c4sp/lisp/c4lc.lisp -O $(IMG_G) -mfuse -fno-builtin -c -conforming $(DUKE3D_INC)
@@ -55,7 +55,7 @@ DUKE3D_HOST_SRCS := $(DUKE3D_ENG:%=$(DUKE3D)/Engine/src/%.c) $(DUKE3D_GAME:%=$(D
 duke3d-host: $(DUKE3D_HOST_SRCS) $(DUKE3D_HDRS)
 	gcc -m32 -std=gnu99 -O2 -fcommon -msse2 -mfpmath=sse -ffp-contract=off -fno-strict-aliasing -w \
 	    -Wno-error=int-conversion -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration \
-	    -DC4DUKE -DPLATFORM_UNIX -I$(DUKE3D)/c4/inc -I$(DUKE3D)/Engine/src -I$(DUKE3D)/Game/src -I$(DUKE3D)/c4 \
+	    -DC4DUKE -DPLATFORM_UNIX -I$(DUKE3D)/c4/inc -Ilibjs/guest -I$(DUKE3D)/Engine/src -I$(DUKE3D)/Game/src -I$(DUKE3D)/c4 \
 	    -o $@ $(DUKE3D_HOST_SRCS) -lm
 
 # The data, which is not in the repository: 3D Realms' shareware package
@@ -102,7 +102,9 @@ test-duke3d: duke3d-data duke3d-host c4bb-images test-libc-bare
 	     $(DUKE3D_GM) > ../../../../.duke3d_t/gm.out 2>/dev/null; } & \
 	 printf 'duke3d $(DUKE3D_RUN)\nexit\n' | timeout 1500 node libjs/cli.js -m 64 -d src/c4bb/images/disk src/c4bb/images/c4ix32.c4r \
 	   2>/dev/null > .duke3d_t/c4ix.out; wait
-	@printf 'duke3d $(DUKE3D_RES)\nexit\n' | timeout 1500 node libjs/cli.js -m 64 -d src/c4bb/images/disk src/c4bb/images/c4ix32.c4r \
+	@# --no-accel: the host build has no drawing accelerators, so its Video
+	@# Setup says ACCELERATED OFF, and this one must too to draw the same menu
+	@printf 'duke3d $(DUKE3D_RES)\nexit\n' | timeout 1500 node libjs/cli.js -m 64 --no-accel -d src/c4bb/images/disk src/c4bb/images/c4ix32.c4r \
 	   2>/dev/null > .duke3d_t/res.out
 	@for w in bare dos c4ix; do grep '^sum\|^timedemo' .duke3d_t/$$w.out | cmp -s .duke3d_t/host.txt - \
 	   || { echo "test-duke3d: $$w's frames differ:"; tail -5 .duke3d_t/$$w.out; exit 1; }; done

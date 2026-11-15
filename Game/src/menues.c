@@ -3130,7 +3130,11 @@ else
             menutext(320>>1,24,0,0,"VIDEO SETUP");
 
 			onbar = (probey == 3 || probey == 4);
+#ifdef C4DUKE
+			x = probe(c+6,43,16,7);	// c4: and ACCELERATED
+#else
 			x = probe(c+6,43,16,6);
+#endif
 			
 			switch(x)
 			{
@@ -3138,6 +3142,14 @@ else
 					gametext(320>>1,43+16*7,"*** SHORTCUT: TYPE DNRATE ***",0,2+8+16); // center-i
 					
 					break;
+#ifdef C4DUKE
+				case -8: // c4: cursor idle on ACCELERATED (6)
+					if (accel_avail())
+						gametext(320>>1,43+16*7,"*** DRAWN BY THE BROWSER ***",0,2+8+16);
+					else
+						gametext(320>>1,43+16*7,"*** NOT ON THIS MACHINE ***",0,2+8+16);
+					break;
+#endif
 
 				case -3: // cursor idle on the togglefullscreen option (1)
 					gametext(320>>1,43+16*7,"*** SHORTCUT: ALT-ENTER ***",0,2+8+16); // center-i
@@ -3199,6 +3211,15 @@ else
 					ud.tickrate ^= 1;
 					vscrn(); // FIX_00056: Refresh issue w/FPS, small Weapon and custom FTA, when screen resized down
 					break;
+#ifdef C4DUKE
+				case 6: // c4: the machine's drawing accelerators, when it has them
+					if (accel_avail())
+					{
+						duke_accel = !duke_accel;
+						accel_set(duke_accel);
+					}
+					break;
+#endif
 			}
 				
 			menutext(c,43,0,0,"RESOLUTION");
@@ -3250,6 +3271,10 @@ else
 
 			menutext(c,43+16*5,SHX(-2),PHX(-2),"SHOW FPS");
 			menutext(c+160+40,43+16*5,0,0,(ud.tickrate&1)?"ON":"OFF");
+#ifdef C4DUKE
+			menutext(c,43+16*6,SHX(-2),PHX(-2),"ACCELERATED");
+			menutext(c+160+40,43+16*6,0,0,(duke_accel && accel_avail())?"ON":"OFF");
+#endif
 
 			break;
 
