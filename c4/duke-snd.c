@@ -256,12 +256,15 @@ static int le16(unsigned char *p) { return p[0] | (p[1] << 8); }
 static long le32(unsigned char *p) { return p[0] | (p[1] << 8) | (p[2] << 16) | ((long) p[3] << 24); }
 
 // A Creative Voice File: its sound data, (type 1) blocks with their
-// continuations (type 2), or a type 9 block of 8-bit mono. *own is set
-// when the blocks had to be joined into memory of its own.
+// continuations (type 2), or type 9 blocks of 8-bit unsigned or 16-bit
+// signed PCM, mono or stereo. 16-bit or stereo is made 8-bit mono, as
+// wav_parse makes it: the shotgun's shot (SHOTGUN7.VOC) is 16-bit, and
+// went unheard while only 8-bit mono was taken. *own is set when the
+// samples had to go into memory of their own.
 static int voc_parse(unsigned char *p, char **data, int *len, int *rate, char **own) {
 	unsigned char *q, *body;
 	char *join;
-	int type, blen, n, total, codec;
+	int type, blen, n, total, codec, bits = 8, channels = 1, i, frames, v;
 	*own = 0;
 	if (memcmp(p, "Creative Voice File", 19) != 0) return 0;
 	q = p + le16(p + 20);
@@ -278,7 +281,11 @@ static int voc_parse(unsigned char *p, char **data, int *len, int *rate, char **
 		} else if (type == 2) {
 			total += blen; n++;
 		} else if (type == 9) {
-			if (body[8] != 8 || body[9] != 1) return 0;   // 8 bits, mono
+			// 8 bits unsigned (codec 0) or 16 signed (codec 4), one or two channels
+			if (!((body[8] == 8 && le16(body + 10) == 0) || (body[8] == 16 && le16(body + 10) == 4)) ||
+			    (body[9] != 1 && body[9] != 2)) return 0;
+			if (n && (body[8] != bits || body[9] != channels)) return 0;
+			bits = body[8]; channels = body[9];
 			*rate = (int) le32(body + 4);
 			if (!n) *data = (char *) body + 16;
 			total += blen - 12; n++;
@@ -286,16 +293,41 @@ static int voc_parse(unsigned char *p, char **data, int *len, int *rate, char **
 	}
 	if (!n || !*rate) return 0;
 	*len = total;
-	if (n == 1) return 1;
-	if (!(join = malloc(total))) return 0;
-	total = 0;
-	for (body = q; (type = body[0]) != 0 && type != 7; body = body + 4 + blen) {
-		blen = body[1] | (body[2] << 8) | (body[3] << 16);
-		if (type == 1) { memcpy(join + total, body + 6, blen - 2); total += blen - 2; }
-		else if (type == 2) { memcpy(join + total, body + 4, blen); total += blen; }
-		else if (type == 9) { memcpy(join + total, body + 16, blen - 12); total += blen - 12; }
+	if (n > 1) {
+		if (!(join = malloc(total))) return 0;
+		total = 0;
+		for (body = q; (type = body[0]) != 0 && type != 7; body = body + 4 + blen) {
+			blen = body[1] | (body[2] << 8) | (body[3] << 16);
+			if (type == 1) { memcpy(join + total, body + 6, blen - 2); total += blen - 2; }
+			else if (type == 2) { memcpy(join + total, body + 4, blen); total += blen; }
+			else if (type == 9) { memcpy(join + total, body + 16, blen - 12); total += blen - 12; }
+		}
+		*data = join; *own = join;
 	}
-	*data = join; *own = join;
+	if (bits == 8 && channels == 1) return 1;
+	// 16-bit or stereo: 8-bit mono, the channels' mean. A sound of one
+	// block (the shotgun's) is made so where it is, in the game's cache,
+	// its block 8-bit mono from then on: the next time it plays it is
+	// taken as it is. Joined blocks go into the memory already their own.
+	frames = *len / (channels * (bits / 8));
+	q = (unsigned char *) *data;
+	join = *own ? *own : (char *) q;
+	for (i = 0; i < frames; i++) {
+		if (bits == 8) v = (q[i * channels] + q[i * channels + channels - 1]) / 2;
+		else {
+			v = (short) le16(q + i * channels * 2) + (short) le16(q + (i * channels + channels - 1) * 2);
+			v = (v / 2 >> 8) + 128;
+		}
+		join[i] = (char) v;
+	}
+	if (!*own) {
+		body = q - 16;                          // the one type 9 block
+		blen = 12 + frames;
+		body[1] = blen & 255; body[2] = (blen >> 8) & 255; body[3] = (blen >> 16) & 255;
+		body[8] = 8; body[9] = 1; body[10] = 0; body[11] = 0;
+		body[16 + frames] = 0;                  // the end, where the rest was
+	}
+	*data = join; *len = frames;
 	return 1;
 }
 
