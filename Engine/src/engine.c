@@ -659,10 +659,19 @@ static void prepwall(int32_t z, walltype *wal)
 }
 
 
+#ifdef C4DUKE
+/* c4: a macro, not a call (700 a frame); the shade is worked out once, into
+   getpalookup_v, where min and max would have worked it out four times.
+   No argument of it holds another getpalookup. */
+static int32_t getpalookup_v;
+#define getpalookup(davis, dashade) (getpalookup_v = (dashade) + ((davis) >> 8), \
+    getpalookup_v < 0 ? 0 : getpalookup_v < numpalookups ? getpalookup_v : numpalookups - 1)
+#else
 static int32_t getpalookup(int32_t davis, int32_t dashade)
 {
     return(min(max(dashade+(davis>>8),0),numpalookups-1));
 }
+#endif
 
 
 static void hline (int32_t xr, int32_t yp)

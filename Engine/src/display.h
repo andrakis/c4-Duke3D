@@ -76,8 +76,16 @@ int VBE_setPalette(uint8_t  *palettebuffer);
 
 
 void setvmode(int mode);
+#ifdef C4DUKE
+/* c4: a byte read or written where it stands. As functions they were a
+   call each, and c4 passes every argument on the stack: pushes, the call,
+   the frame and the return, to move one byte. Each argument is used once. */
+#define readpixel(location) (*(uint8_t *)(location))
+#define drawpixel(location, pixel) (*(uint8_t *)(location) = (uint8_t)(pixel))
+#else
 uint8_t  readpixel(uint8_t  * location);
 void drawpixel(uint8_t  * location, uint8_t pixel);
+#endif
 
 
 void drawpixel16(int32_t offset);

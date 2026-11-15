@@ -82,7 +82,7 @@ static inline int scale (int32_t input1, int32_t input2, int32_t input3)
 		return r;
 	return (int)(mul32_64(input1,input2)/(int64_t)input3);
 }
-static inline int mulscale (int32_t input1, int32_t input2, int32_t input3)
+static inline int mulscale_c (int32_t input1, int32_t input2, int32_t input3)
 {
 	int done;
 	int32_t r;
@@ -95,6 +95,14 @@ static inline int mulscale (int32_t input1, int32_t input2, int32_t input3)
 		return r;
 	return (int)(mul32_64(input1,input2)>>input3);
 }
+/* With the accelerators, mulscale is their one instruction where it stands,
+   for any a and b: c4lc makes a static inline function a call like any
+   other, and the call cost more than the product (2,500 a frame). Each
+   argument is used once on either side; s is a constant (mulscaleN), so
+   the test of it goes at compile time. Otherwise, and until the game has
+   asked (accel_draw -1), the function. */
+#define mulscale(a, b, s) (accel_draw > 0 && (s) > 0 && (s) < 32 ? \
+	duke_mulscale((a), (b), (s)) : mulscale_c((a), (b), (s)))
 static inline int dmulscale  (int32_t input1, int32_t input2, int32_t input3,int32_t input4,int32_t input5)
 {
 	if (C4_WITHIN(input1, 32767) && C4_WITHIN(input2, 32767) && C4_WITHIN(input3, 32767) &&
