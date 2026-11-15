@@ -13,7 +13,8 @@
 enum {
 	DA_TCOL, DA_TCOLM, DA_HLINE, DA_RHLINE, DA_SLOPE,
 	DA_MULSCALE, DA_UDIV64, DA_QINTERP16, DA_CLEARB, DA_COPYB,
-	DA_TVLINE1, DA_TVLINE2, DA_TSPRITE, DA_THLINE
+	DA_TVLINE1, DA_TVLINE2, DA_TSPRITE, DA_THLINE,
+	DA_SCALE, DA_DMULSCALE
 };
 
 extern int32_t accel_draw;
@@ -49,6 +50,10 @@ int32_t accel_base(void);
 	__c4_opcode((i2), (n), (i4), (tex), (dest), (pal), (eax1), (eax3), (ecx), (padder), (bpl), (rev), (tl), DA_OP(DA_TSPRITE))
 #define duke_thline(i2, i3, i5, i6, tex, pal, inc2, inc5, al, bl, rev, tl) \
 	__c4_opcode((i2), (i3), (i5), (i6), (tex), (pal), (inc2), (inc5), (al), (bl), (rev), (tl), DA_OP(DA_THLINE))
+/* fixedPoint_math.h's: (int32_t)((int64_t)a*b/c) for c not 0, and
+   (int32_t)(((int64_t)a*b + (int64_t)c*d) >> s) for 0 < s < 32 */
+#define duke_scale(a, b, c) __c4_opcode((a), (b), (c), DA_OP(DA_SCALE))
+#define duke_dmulscale(a, b, c, d, s) __c4_opcode((a), (b), (c), (d), (s), DA_OP(DA_DMULSCALE))
 #else
 #define duke_tcol(n, v, inc, sh, tex, pal, dest, stride) 0
 #define duke_tcol_masked(n, v, inc, sh, tex, pal, dest, stride) 0
@@ -64,6 +69,8 @@ int32_t accel_base(void);
 #define duke_tvline2(ebp, inca, bufa, bufb, i5, i6, incb, edi, sh, pala, palb, bpl, rev, tl, pasm1, pasm2) 0
 #define duke_tsprite(i2, n, i4, tex, dest, pal, eax1, eax3, ecx, padder, bpl, rev, tl) 0
 #define duke_thline(i2, i3, i5, i6, tex, pal, inc2, inc5, al, bl, rev, tl) 0
+#define duke_scale(a, b, c) 0
+#define duke_dmulscale(a, b, c, d, s) 0
 #endif
 
 #endif

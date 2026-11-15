@@ -96,8 +96,9 @@ export default function duke3d({ reader, writer, reader32, writer32, probe, args
 
   // DA_MULSCALE (a, b, s), 0 < s < 32: (int32_t)(((int64_t)a * b) >> s), the
   // product in 16-bit digits as fixedPoint_math.c's c4_mulscale has it
-  function mulscale(m) {
-    const [a, b, s] = args(m, 3);
+  // (int64_t)a * b as its two words, hi signed and lo unsigned: the 16-bit
+  // digits, the high ones signed, so that any a and b take, INT32_MIN too
+  const mul64 = (a, b) => {
     const ah = a >> 16, al = a & 0xffff, bh = b >> 16, bl = b & 0xffff;
     const m1 = ah * bl, m2 = al * bh;
     let lo = (al * bl) >>> 0;
@@ -106,6 +107,11 @@ export default function duke3d({ reader, writer, reader32, writer32, probe, args
     if (t < lo) hi = (hi + 1) | 0;
     lo = (t + ((m2 << 16) >>> 0)) >>> 0;
     if (lo < t) hi = (hi + 1) | 0;
+    return [hi, lo];
+  };
+  function mulscale(m) {
+    const [a, b, s] = args(m, 3);
+    const [hi, lo] = mul64(a, b);
     return (lo >>> s) | (hi << (32 - s));
   }
 
@@ -273,6 +279,40 @@ export default function duke3d({ reader, writer, reader32, writer32, probe, args
     return 0;
   }
 
+  // DA_SCALE (a, b, c), c not 0: (int32_t)((int64_t)a * b / c), the
+  // quotient toward zero and its low word, for any a, b and c: the
+  // product's magnitude in four 16-bit digits, divided by |c| a digit at a
+  // time (each step a number below 2^47 over one below 2^31 + 1, exact in a
+  // double), and the sign put back. (c 0: the game's C, fixedPoint_math.h.)
+  function scale(m) {
+    const [a, b, c] = args(m, 3);
+    const ua = Math.abs(a), ub = Math.abs(b), uc = Math.abs(c);
+    const a1 = Math.floor(ua / 65536), a0 = ua % 65536, b1 = Math.floor(ub / 65536), b0 = ub % 65536;
+    const lo = a0 * b0, mid = a0 * b1 + a1 * b0, hi = a1 * b1;
+    let k = Math.floor(lo / 65536) + mid;
+    const d0 = lo % 65536, d1 = k % 65536;
+    k = Math.floor(k / 65536) + hi;
+    const d2 = k % 65536, d3 = Math.floor(k / 65536);
+    let r = 0, q = 0;
+    for (const d of [d3, d2, d1, d0]) {
+      const x = r * 65536 + d;
+      const qd = qdiv(x, uc);
+      r = x - qd * uc;
+      q = ((q << 16) | qd) | 0;           // the quotient's low word
+    }
+    return (a < 0) !== (b < 0) !== (c < 0) ? (0 - q) | 0 : q;
+  }
+
+  // DA_DMULSCALE (a, b, c, d, s), 0 < s < 32: (int32_t)(((int64_t)a * b +
+  // (int64_t)c * d) >> s), the sum in 64 bits wrapping as the C's does
+  function dmulscale(m) {
+    const [a, b, c, d, s] = args(m, 5);
+    const [h1, l1] = mul64(a, b), [h2, l2] = mul64(c, d);
+    const lo = (l1 + l2) >>> 0;
+    const hi = (h1 + h2 + (lo < l1 ? 1 : 0)) | 0;
+    return (lo >>> s) | (hi << (32 - s));
+  }
+
   return [m => tcol(m, false), m => tcol(m, true), hline, rhline, slope, mulscale, udiv64, qinterp16, clearb, copyb,
-          tvline1, tvline2, tsprite, thline];
+          tvline1, tvline2, tsprite, thline, scale, dmulscale];
 }

@@ -313,13 +313,41 @@ void test_trans() {
     }
 }
 
+// fixedPoint_math.h's scale and dmulscale, in int64_t as its fallbacks have them
+int pick(int k) {
+    switch (rnd(6)) {
+    case 0: return rnd(46341) - rnd(46341);
+    case 1: return rnd(1 << 30) * 4 + rnd(4);
+    case 2: return (rnd(1 << 30) * 4 + rnd(4)) >> rnd(31);
+    case 3: return k & 1 ? (int)0x80000000 : 0x7fffffff;
+    case 4: return rnd(3) - 1;
+    default: return rnd(1 << 16) - (1 << 15);
+    }
+}
+void test_scale() {
+    int k, a, b, c, d, s, r, w;
+    for (k = 0; k < 600; k++) {
+        a = pick(k); b = pick(k + 1); c = pick(k + 2);
+        if (c == 0) c = 1 + rnd(1000);
+        r = duke_scale(a, b, c);
+        w = (int)((int64_t)a * b / c);
+        cases++;
+        if (r != w) { fails++; if (fails < 10) printf("accel: scale %d %d %d: %d, not %d\n", a, b, c, r, w); }
+        d = pick(k + 3); s = 1 + rnd(31);
+        r = duke_dmulscale(a, b, c, d, s);
+        w = (int)(((int64_t)a * b + (int64_t)c * d) >> s);
+        cases++;
+        if (r != w) { fails++; if (fails < 10) printf("accel: dmulscale %d %d %d %d %d: %d, not %d\n", a, b, c, d, s, r, w); }
+    }
+}
+
 int main() {
     if (DUKE_ACCEL() <= 0) { printf("accel: Duke's are not here
 "); return 0; }
     tex = malloc(TEXN); pal = malloc(PALN); bufc = malloc(BUFN); bufa = malloc(BUFN);
     pals = malloc(256 * sizeof(int));
     fill(tex, TEXN, 1); fill(pal, PALN, 0);
-    test_tcol(); test_hline(); test_rhline(); test_slope(); test_math(); test_buffers(); test_trans();
+    test_tcol(); test_hline(); test_rhline(); test_slope(); test_math(); test_buffers(); test_trans(); test_scale();
     if (fails) printf("accel: %d of %d cases differ
 ", fails, cases);
     else printf("accel: Duke's, %d cases, each as its loop has it
