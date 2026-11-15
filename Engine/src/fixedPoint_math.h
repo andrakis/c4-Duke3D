@@ -71,7 +71,7 @@ static inline int64_t mul32_64(int32_t i1,int32_t i2)
 int32_t c4_divscale(int32_t a, int32_t d, int32_t s, int *done);
 int32_t c4_scale(int32_t a, int32_t b, int32_t c, int *done);
 int32_t c4_mulscale(int32_t a, int32_t b, int32_t s, int *done);
-static inline int scale (int32_t input1, int32_t input2, int32_t input3)
+static inline int scale_c (int32_t input1, int32_t input2, int32_t input3)
 {
 	int done;
 	int32_t r;
@@ -103,7 +103,16 @@ static inline int mulscale_c (int32_t input1, int32_t input2, int32_t input3)
    asked (accel_draw -1), the function. */
 #define mulscale(a, b, s) (accel_draw > 0 && (s) > 0 && (s) < 32 ? \
 	duke_mulscale((a), (b), (s)) : mulscale_c((a), (b), (s)))
-static inline int dmulscale  (int32_t input1, int32_t input2, int32_t input3,int32_t input4,int32_t input5)
+/* scale and dmulscale the same way (380 and 680 a frame, most of them past
+   the 32-bit cases, into c4_scale and the int64_t library). scale's
+   divisor is tested and then used, so it must be pure: none of the 110
+   calls passes one that calls or assigns. dmulscale's s is a constant
+   (dmulscaleN). */
+#define scale(a, b, c) (accel_draw > 0 && (c) != 0 ? \
+	duke_scale((a), (b), (c)) : scale_c((a), (b), (c)))
+#define dmulscale(a, b, c, d, s) (accel_draw > 0 && (s) > 0 && (s) < 32 ? \
+	duke_dmulscale((a), (b), (c), (d), (s)) : dmulscale_c((a), (b), (c), (d), (s)))
+static inline int dmulscale_c (int32_t input1, int32_t input2, int32_t input3,int32_t input4,int32_t input5)
 {
 	if (C4_WITHIN(input1, 32767) && C4_WITHIN(input2, 32767) && C4_WITHIN(input3, 32767) &&
 	    C4_WITHIN(input4, 32767) && input5 < 32)
@@ -353,11 +362,22 @@ static inline int ksgn(int32_t i1)
 }
 
 static inline int sgn(int32_t i1) { return ksgn(i1); }
+#if defined(C4DUKE) && defined(__c4_inttypes__)
+/* c4lc: a macro, not a call (770 a frame, eight instructions of work
+   each). Its argument is worked out once, into klabs_v: eight calls pass
+   one that calls (hits, getflorzofslope...). Only for c4lc, whose stack
+   machine works out each operand of klabs(a) + klabs(b) whole before the
+   next; for gcc that would be two unsequenced writes, and gcc inlines the
+   function anyway. */
+static int32_t klabs_v;
+#define klabs(a) (klabs_v = (a), klabs_v < 0 ? -klabs_v : klabs_v)
+#else
 static inline int klabs (int32_t i1)
 {
   if (i1 < 0) i1 = -i1;
   return i1;
 }
+#endif
 static inline int mul3 (int32_t i1) { return i1*3; }
 static inline int mul5 (int32_t i1) { return i1*5; }
 static inline int mul9 (int32_t i1) { return i1*9; }
