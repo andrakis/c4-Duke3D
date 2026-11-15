@@ -987,24 +987,24 @@ void slopevlin(intptr_t i1, uint32_t i2, int32_t i3, int32_t i4, int32_t i5, int
    compare, a branch, a decrement and a jump, a third of what such a pixel
    costs. The same pixels in the same order.  */
 
-/* A machine that says so in INFO draws these loops itself, one instruction
-   a column or a row (c4's libjs/guest/accel.h, docs/accel.md): the walls,
+/* A machine that has Duke's accelerators (c4/accel.mjs, c4/c4accel.h)
+   draws these loops itself, one instruction a column or a row: the walls,
    the masked walls, the floors, the sloped floors and the tilted screen.
    The same pixels in the same order; on any other machine the loops below
-   draw them. accel_draw is the game's to set (its Video Setup menu,
-   "ACCELERATED"); until it does, the machine decides. */
-#include "accel.h"
+   draw them. accel_draw is the first of Duke's numbers, or 0: the game's to
+   set (its Video Setup menu, "ACCELERATED"); until it does, the machine
+   decides. */
 int32_t accel_draw = -1;
-#define C4_ACCEL() (accel_draw >= 0 ? accel_draw : (accel_draw = accel_present()))
-int accel_avail(void) { return accel_present(); }
-void accel_set(int on) { accel_draw = on && accel_present(); }
+int32_t accel_base(void) { return accel_draw = accel_find("duke3d"); }
+int accel_avail(void) { return accel_find("duke3d") != 0; }
+void accel_set(int on) { accel_draw = on ? accel_find("duke3d") : 0; }
 
 int32_t vlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t numPixels, int32_t vplce, uint8_t* texture, uint8_t* dest)
 {
     int32_t sh = mach3_al, bpl = bytesperline;
     uint32_t v = (uint32_t)vplce;
-    if (C4_ACCEL())
-        return accel_tcol(numPixels + 1, vplce, vince, sh, texture, palookupoffse, dest, bpl);
+    if (DUKE_ACCEL() > 0)
+        return duke_tcol(numPixels + 1, vplce, vince, sh, texture, palookupoffse, dest, bpl);
     numPixels++;
     while (numPixels)
     {
@@ -1020,8 +1020,8 @@ int32_t mvlineasm1(int32_t vince, uint8_t* palookupoffse, int32_t i3, int32_t vp
 {
     int32_t sh = machmv, bpl = bytesperline, t;
     uint32_t v = (uint32_t)vplce;
-    if (C4_ACCEL())
-        return accel_tcol_masked(i3 + 1, vplce, vince, sh, texture, palookupoffse, dest, bpl);
+    if (DUKE_ACCEL() > 0)
+        return duke_tcol_masked(i3 + 1, vplce, vince, sh, texture, palookupoffse, dest, bpl);
     for (; i3 >= 0; i3--)
     {
         t = texture[v >> sh];
@@ -1040,10 +1040,10 @@ void vlineasm4(int32_t count, intptr_t framebuffer)
     int32_t i, n, sh = mach3_al, bpl = bytesperline;
     uint32_t v, inc;
     uint8_t *p, *tex, *pal;
-    if (C4_ACCEL())
+    if (DUKE_ACCEL() > 0)
     {
         for (i = 0; i < 4; i++)
-            vplce[i] = accel_tcol(count, vplce[i], vince[i], sh, bufplce[i], palookupoffse[i], framebuffer + i, bpl);
+            vplce[i] = duke_tcol(count, vplce[i], vince[i], sh, bufplce[i], palookupoffse[i], framebuffer + i, bpl);
         return;
     }
     for (i = 0; i < 4; i++)
@@ -1075,10 +1075,10 @@ void mvlineasm4(int32_t count, intptr_t framebufferOffset)
     int32_t i, n, sh = machmv, bpl = bytesperline, t;
     uint32_t v, inc;
     uint8_t *p, *tex, *pal;
-    if (C4_ACCEL())
+    if (DUKE_ACCEL() > 0)
     {
         for (i = 0; i < 4; i++)
-            vplce[i] = accel_tcol_masked(count, vplce[i], vince[i], sh, bufplce[i], palookupoffse[i], framebufferOffset + i, bpl);
+            vplce[i] = duke_tcol_masked(count, vplce[i], vince[i], sh, bufplce[i], palookupoffse[i], framebufferOffset + i, bpl);
         return;
     }
     for (i = 0; i < 4; i++)
@@ -1127,9 +1127,9 @@ void rhlineasm4(int32_t i1, uint8_t* texture, int32_t i3, uint32_t i4, uint32_t 
     uint8_t *p = (uint8_t *)(intptr_t)dest - 1;
     uint8_t *pal = (uint8_t *)(intptr_t)((uint32_t)i3 & 0xffffff00u) + rmach_edx;
     if (n <= 0) return;
-    if (C4_ACCEL())
+    if (DUKE_ACCEL() > 0)
     {
-        accel_rhline(n, texture, pal, p, c, s, x, y, da, db, ax, bx);
+        duke_rhline(n, texture, pal, p, c, s, x, y, da, db, ax, bx);
         return;
     }
     while (n >= 4)
@@ -1166,9 +1166,9 @@ void hlineasm4(int32_t numPixels, int32_t shade, uint32_t i4, uint32_t i5, uint8
     uint32_t a = i5, b = i4, da = (uint32_t)asm1, db = (uint32_t)asm2;
     uint8_t *texture = textureSetup, *pal = globalpalwritten + (shade & 0xffffff00);
     numPixels++;
-    if (C4_ACCEL())
+    if (DUKE_ACCEL() > 0)
     {
-        accel_hline(numPixels, a, b, da, db, sh1, bits, sh2, texture, pal, dest);
+        duke_hline(numPixels, a, b, da, db, sh1, bits, sh2, texture, pal, dest);
         return;
     }
     while (numPixels >= 4)
@@ -1211,12 +1211,12 @@ void slopevlin(intptr_t i1, uint32_t i2, int32_t i3, int32_t i4, int32_t i5, int
     esi = (uint32_t)i5 + (uint32_t)globalx3 * (z << 3);
     edi = (uint32_t)i6 + (uint32_t)globaly3 * (z << 3);
     left = i4;
-    if (C4_ACCEL())
+    if (DUKE_ACCEL() > 0)
     {
         bitwisef2i st;
         c.f = a;
         st.f = asm2_f;
-        accel_slope(dest, z, pals, left, esi, edi, sh2, sh1, mask, bpl, tex, c.i, st.i,
+        duke_slope(dest, z, pals, left, esi, edi, sh2, sh1, mask, bpl, tex, c.i, st.i,
                     globalx3, globaly3, reciptable, &fpuasm, &asm4);
         return;
     }

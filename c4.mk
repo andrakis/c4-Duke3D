@@ -83,13 +83,26 @@ PHONY += duke3d-data
 # 320x200 to 400x300), the detail set low there, and played on so; then
 # quit from the game (F10, Y), which must end it. And on the bare machine
 # once more with the music on, on a sound card with a General MIDI synth
-# (cli.js --midi, duke-snd.c): the same frames, and the music as MIDI,
+# (cli.js --midi, duke-snd.c): the same frames, and the music as MIDI
+# (without the accelerators: the music's time is the machine's, and the
+# notes counted below are those the loops' 600 frames take),
 # drums and all (midi-notes.mjs).
 DUKE3D_RUN  := /v1 /l1 /s2 /ns /nm -sum 50 -frames 600 -script
 DUKE3D_RES  := /v1 /l1 /s2 /ns /nm -sum 20 -frames 400 -menu
 DUKE3D_GM   := /v1 /l1 /s2 /ns -sum 50 -frames 600 -script
-test-duke3d: duke3d-data duke3d-host c4bb-images test-libc-bare
+# c4's port: Duke's accelerators (c4/accel.mjs) against their loops, on the
+# bare machine, with libjs's own (cli.js loads them, docs/accel.md). In a
+# directory of its own: c4-images.sh links .duke3d/*.c4o into the game.
+.duke3d/test/acceltest.c4o: $(DUKE3D)/c4/acceltest.c $(DUKE3D_HDRS) $(C4LC_LISP) .img_g | c4sp32
+	@mkdir -p .duke3d/test
+	$(DUKE3D_CC) $< $@ > /dev/null
+.duke3d/test/acceltest.c4r: .duke3d/test/acceltest.c4o libc-bare-objs
+	./c4rlink32 $< .libc-bare/libc-*.c4o -o $@ > /dev/null
+test-duke3d: duke3d-data duke3d-host c4bb-images test-libc-bare .duke3d/test/acceltest.c4r
 	@rm -rf .duke3d_t && mkdir -p .duke3d_t
+	@timeout 600 node libjs/cli.js -m 64 .duke3d/test/acceltest.c4r > .duke3d_t/accel.txt 2>&1; cat .duke3d_t/accel.txt
+	@grep -q "^accel: Duke's, [0-9]* cases, each as its loop has it" .duke3d_t/accel.txt \
+	   || { echo "test-duke3d: the accelerators do not draw as their loops"; exit 1; }
 	@cp $(DUKE3D_DATA)/DUKE3DSW.GRP $(DUKE3D_DATA)/DUKE.RTS .duke3d_t/
 	@cd .duke3d_t && ../duke3d-host $(DUKE3D_RUN) 2>/dev/null | grep '^sum\|^timedemo' > host.txt
 	@cd .duke3d_t && ../duke3d-host $(DUKE3D_RES) 2>/dev/null | grep '^sum\|^timedemo' > res.txt
@@ -98,7 +111,7 @@ test-duke3d: duke3d-data duke3d-host c4bb-images test-libc-bare
 	     > ../../../../.duke3d_t/bare.out 2>/dev/null & \
 	   printf 'duke3d $(DUKE3D_RUN)\nver\n' | timeout 1500 node ../../../../libjs/cli.js -m 64 -d . ../c4dos32.c4r \
 	     > ../../../../.duke3d_t/dos.out 2>/dev/null; wait; }
-	@{ cd src/c4bb/images/games && timeout 1500 node ../../../../libjs/cli.js -m 64 -d . --midi ../../../../.duke3d_t/gm.txt duke3d.c4r \
+	@{ cd src/c4bb/images/games && timeout 1500 node ../../../../libjs/cli.js -m 64 --no-accel -d . --midi ../../../../.duke3d_t/gm.txt duke3d.c4r \
 	     $(DUKE3D_GM) > ../../../../.duke3d_t/gm.out 2>/dev/null; } & \
 	 printf 'duke3d $(DUKE3D_RUN)\nexit\n' | timeout 1500 node libjs/cli.js -m 64 -d src/c4bb/images/disk src/c4bb/images/c4ix32.c4r \
 	   2>/dev/null > .duke3d_t/c4ix.out; wait

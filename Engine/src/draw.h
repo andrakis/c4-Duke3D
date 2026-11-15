@@ -33,9 +33,7 @@ extern uint8_t* palookupoffse[4];
 void sethlinesizes(int32_t,int32_t,uint8_t *);
 
 #ifdef C4DUKE
-/* c4: the machine draws the walls, floors and tilted screen itself when it
-   can and this is 1 (draw.c); -1 until the game says */
-extern int32_t accel_draw;
+#include "c4accel.h"	/* c4: Duke's accelerators, accel_draw */
 #endif
 
 

@@ -9,6 +9,9 @@
 #define __PRAGMAS_H__
 
 #include "platform.h" 
+#ifdef C4DUKE
+#include "c4accel.h"	/* c4: the 64-bit helpers by the machine, when it has them */
+#endif
 
 static __inline void swapchar(uint8_t  *p1, uint8_t  *p2)
 { uint8_t  tmp = *p1; *p1 = *p2; *p2 = tmp; }
@@ -85,6 +88,8 @@ static inline int mulscale (int32_t input1, int32_t input2, int32_t input3)
 	int32_t r;
 	if (C4_WITHIN(input1, 46340) && C4_WITHIN(input2, 46340) && input3 < 32)
 		return (input1*input2)>>input3;
+	if (input3 > 0 && input3 < 32 && DUKE_ACCEL() > 0)
+		return duke_mulscale(input1, input2, input3);
 	r = c4_mulscale(input1, input2, input3, &done);
 	if (done)
 		return r;

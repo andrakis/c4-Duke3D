@@ -18,6 +18,7 @@ void clearbufbyte(void *D, int32_t c, int32_t a)
 	uint8_t  *p = (uint8_t *)D;
 	uint8_t b[4];
 	int32_t z = 0;
+	if (c > 0 && DUKE_ACCEL() > 0) { duke_clearb(D, c, a); return; }
 	b[0] = a & 0xff; b[1] = (a >> 8) & 0xff; b[2] = (a >> 16) & 0xff; b[3] = (a >> 24) & 0xff;
 	while ((c--) > 0) {
 		*(p++) = b[z];
@@ -47,6 +48,10 @@ void copybuf(void *s, void *d, int32_t c)
 void copybufbyte(void *S, void *D, int32_t c)
 {
 	uint8_t  *p = (uint8_t *)S, *q = (uint8_t *)D;
+#ifdef C4DUKE
+	/* c4: by the machine where the two do not overlap */
+	if (c > 0 && (q + c <= p || p + c <= q) && DUKE_ACCEL() > 0) { duke_copyb(S, D, c); return; }
+#endif
 	while((c--) > 0) *(q++) = *(p++);
 }
 
@@ -65,6 +70,9 @@ void qinterpolatedown16(int32_t* bufptr, int32_t num, int32_t val, int32_t add)
 void qinterpolatedown16short(int32_t* bufptr, int32_t num, int32_t val, int32_t add)
 { // ...maybe the same person who provided this too?
     int32_t i; short *sptr = (short *)bufptr;
+#ifdef C4DUKE
+    if (num > 0 && DUKE_ACCEL() > 0) { duke_qinterp16(bufptr, num, val, add); return; }
+#endif
     for(i=0;i<num;i++) { sptr[i] = (short)(val>>16); val += add; }
 }
 
@@ -98,9 +106,12 @@ static int c4_room (int32_t b)
    as many bits at a time as the remainder has room for beside b. */
 uint32_t c4_udiv64 (uint32_t hi, uint32_t lo, int32_t b)
 {
-	int k = c4_room (b), n = 64, take;
+	int k, n = 64, take;
 	int32_t r = 0;
 	uint32_t q = 0;
+	if (DUKE_ACCEL() > 0)
+		return duke_udiv64 (hi, lo, b);
+	k = c4_room (b);
 	if (hi == 0) { hi = lo; lo = 0; n = 32; }
 	while (n > 0)
 	{
