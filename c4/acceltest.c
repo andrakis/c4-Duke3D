@@ -207,13 +207,119 @@ void test_buffers() {
     }
 }
 
+// draw.c's translucent loops, as Chocolate Duke3D has them: pal stands in
+// for transluc, tex for the textures and palettes
+unsigned tvc(int inc, unsigned char *p, int n, unsigned v, unsigned char *t, unsigned char *d, int sh, int bpl, int rev) {
+    unsigned short ci;
+    while (n) {
+        unsigned tt = t[v >> sh];
+        if (tt != 255) {
+            ci = p[tt]; ci |= (*d) << 8;
+            if (rev) ci = (ci >> 8) | (ci << 8);
+            *d = pal[ci];
+        }
+        v += inc; d += bpl; n--;
+    }
+    return v;
+}
+unsigned asm1c, asm2c, asm1a, asm2a;
+int bothc;
+void tv2c(unsigned ebp, unsigned inca, unsigned char *bufa, unsigned char *bufb, unsigned i5, unsigned i6, unsigned incb,
+          unsigned edi, int sh, unsigned char *pa, unsigned char *pb, int bpl, int rev) {
+    unsigned a, b;
+    unsigned short l, r;
+    i6 -= edi;
+    do {
+        a = bufa[i5 >> sh]; b = bufb[ebp >> sh];
+        i5 += inca; ebp += incb;
+        if (a == 255) {
+            if (b != 255) { r = pb[b] | (((unsigned char *)i6)[edi + 1] << 8); if (rev) r = (r >> 8) | (r << 8); ((unsigned char *)i6)[edi + 1] = pal[r]; }
+        } else if (b == 255) {
+            l = pa[a] | (((unsigned char *)i6)[edi] << 8); if (rev) l = (l >> 8) | (l << 8); ((unsigned char *)i6)[edi] = pal[l];
+        } else {
+            l = ((unsigned char *)i6)[edi] << 8; r = ((unsigned char *)i6)[edi + 1] << 8;
+            l |= pa[a]; r |= pb[b];
+            if (rev) { l = (l >> 8) | (l << 8); r = (r >> 8) | (r << 8); }
+            ((unsigned char *)i6)[edi] = pal[l]; ((unsigned char *)i6)[edi + 1] = pal[r];
+            bothc++;
+        }
+        i6 += bpl;
+    } while (i6 > i6 - bpl);
+    asm1c = i5; asm2c = ebp;
+}
+unsigned adderc, addera;
+void tsc(int i2, int n, unsigned i4, unsigned char *t, unsigned char *d, unsigned char *p, unsigned eax1, unsigned eax3, unsigned ecx, int bpl, int rev) {
+    unsigned char ci;
+    unsigned short val;
+    while (n) {
+        n--;
+        if (n != 0) {
+            i4 += ecx;
+            if (i4 < (i4 - ecx)) adderc = eax3;
+            ci = *t;
+            i2 += eax1;
+            if (i2 < (i2 - eax1)) t++;
+            t += adderc;
+            if (ci != 255) { val = p[ci]; val |= (*d) << 8; if (rev) val = (val >> 8) | (val << 8); *d = pal[val]; }
+            d += bpl;
+        }
+    }
+}
+void thc(unsigned i2, unsigned i3, int i5, unsigned char *d, unsigned char *t, unsigned char *p, int inc2, int inc5, int al, int bl, int rev) {
+    unsigned ebx;
+    int counter = (i3 >> 16), i1;
+    unsigned short val;
+    while (counter >= 0) {
+        ebx = i2 >> al;
+        ebx = (((unsigned)i5) >> (32 - bl)) | (ebx << bl);
+        i1 = t[ebx];
+        if ((i1 & 0xff) != 0xff) { val = p[i1]; val |= (*d) << 8; if (rev) val = (val >> 8) | (val << 8); *d = pal[val]; }
+        i2 += inc2; i5 += inc5; d++; counter--;
+    }
+}
+void test_trans() {
+    int k, n, sh, x, rows, bpl, both, rev, al, bl, i2, eax1, ecx, eax3, inc2, inc5;
+    unsigned v, inc, va, vc, ebp, i5, inca, incb, edi, i4;
+    for (k = 0; k < 200; k++) {
+        rev = k & 1;
+        clear();
+        for (x = 0; x < BUFN; x++) bufa[x] = bufc[x] = rnd(256);
+        n = rnd(240); sh = 16 + rnd(16); v = (unsigned)rnd(1 << 30) * 4 + rnd(4); inc = (unsigned)rnd(1 << 30) * 2;
+        x = rnd(320);
+        vc = tvc(inc, tex + 40000, n, v, tex, bufc + x, sh, 320, rev);
+        va = duke_tvline1(inc, tex + 40000, n, v, tex, bufa + x, sh, 320, rev, pal);
+        check("tvline1", k, va == vc);
+
+        rows = 1 + rnd(230); bpl = 320; x = rnd(318); sh = 17 + rnd(15);
+        ebp = (unsigned)rnd(1 << 30) * 4; i5 = (unsigned)rnd(1 << 30) * 4; inca = rnd(1 << 30); incb = rnd(1 << 30);
+        edi = (unsigned)(bufc + x + rows * bpl); bothc = 0;
+        tv2c(ebp, inca, tex, tex + 1000, i5, edi - rows * bpl, incb, edi, sh, tex + 40000, tex + 50000, bpl, rev);
+        edi = (unsigned)(bufa + x + rows * bpl);
+        both = duke_tvline2(ebp, inca, tex, tex + 1000, i5, edi - rows * bpl, incb, edi, sh, tex + 40000, tex + 50000, bpl, rev, pal, &asm1a, &asm2a);
+        check("tvline2", k, both == bothc && asm1a == asm1c && asm2a == asm2c);
+
+        n = rnd(230); i2 = rnd(1 << 30) * 4; i4 = (unsigned)rnd(1 << 30) * 4; eax1 = rnd(1 << 30) * 4; ecx = rnd(1 << 30) * 4;
+        eax3 = rnd(64); adderc = rnd(64); addera = adderc; x = rnd(320);
+        tsc(i2, n, i4, tex, bufc + x, tex + 40000, eax1, eax3, ecx, 320, rev);
+        duke_tsprite(i2, n, i4, tex, bufa + x, tex + 40000, eax1, eax3, ecx, &addera, 320, rev, pal);
+        check("tsprite", k, addera == adderc);
+
+        al = 24 + rnd(8); bl = 1 + rnd(7); x = 320 * rnd(200);
+        i2 = rnd(1 << 30) * 4; i5 = rnd(1 << 30) * 4; inc2 = rnd(1 << 24); inc5 = rnd(1 << 24);
+        n = rnd(318);
+        thc(i2, (unsigned)n << 16, i5, bufc + x, tex, tex + 40000, inc2, inc5, al, bl, rev);
+        duke_thline(i2, (unsigned)n << 16, i5, bufa + x, tex, tex + 40000, inc2, inc5, al, bl, rev, pal);
+        check("thline", k, 1);
+    }
+}
+
 int main() {
     if (DUKE_ACCEL() <= 0) { printf("accel: Duke's are not here
 "); return 0; }
     tex = malloc(TEXN); pal = malloc(PALN); bufc = malloc(BUFN); bufa = malloc(BUFN);
     pals = malloc(256 * sizeof(int));
     fill(tex, TEXN, 1); fill(pal, PALN, 0);
-    test_tcol(); test_hline(); test_rhline(); test_slope(); test_math(); test_buffers();
+    test_tcol(); test_hline(); test_rhline(); test_slope(); test_math(); test_buffers(); test_trans();
     if (fails) printf("accel: %d of %d cases differ
 ", fails, cases);
     else printf("accel: Duke's, %d cases, each as its loop has it

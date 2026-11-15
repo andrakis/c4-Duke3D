@@ -289,6 +289,11 @@ int32_t tvlineasm1(int32_t i1, uint8_t  * texture, int32_t numPixels, int32_t i4
 {
     uint8_t shiftValue = (globalshiftval & 0x1f);
     
+#ifdef C4DUKE
+	/* c4: the translucent column by the machine, when it draws them */
+	if (DUKE_ACCEL() > 0)
+		return duke_tvline1(i1, texture, numPixels + 1, i4, source, dest, shiftValue, bytesperline, transrev, transluc);
+#endif
 	numPixels++;
 	while (numPixels)
 	{
@@ -342,6 +347,16 @@ void tvlineasm2(uint32_t i1, uint32_t i2, uintptr_t i3, uintptr_t i4, uint32_t i
 	uintptr_t tran2edi = asm2;
 	uintptr_t tran2edi1 = asm2 + 1;
 
+#ifdef C4DUKE
+	/* c4: the two translucent columns by the machine, when it draws them;
+	   asm1 and asm2 left as below, and pixelsAllowed counted down alike */
+	if (DUKE_ACCEL() > 0)
+	{
+		pixelsAllowed -= duke_tvline2(i1, i2, i3, i4, i5, i6, asm1, asm2, tran2shr, tran2pal_ebx, tran2pal_ecx,
+		                              bytesperline, transrev, transluc, &asm1, &asm2);
+		return;
+	}
+#endif
 	i6 -= asm2;
 
 	do {
@@ -684,6 +699,15 @@ void DrawSpriteVerticalLine(int32_t i2, int32_t numPixels, uint32_t i4, uint8_t 
 {
     uint8_t colorIndex;
     
+#ifdef C4DUKE
+	/* c4: the translucent sprite's column by the machine, when it draws them */
+	if (DUKE_ACCEL() > 0)
+	{
+		duke_tsprite(i2, numPixels, i4, texture, dest, tspal, tsmach_eax1, tsmach_eax3, tsmach_ecx, &adder,
+		             bytesperline, transrev, transluc);
+		return;
+	}
+#endif
 	while (numPixels)
 	{
 		numPixels--;
@@ -829,6 +853,15 @@ void thlineskipmodify(int32_t i1, uint32_t i2, uint32_t i3, int32_t i4, int32_t 
 {
     uint32_t ebx;
     int counter = (i3>>16);
+#ifdef C4DUKE
+	/* c4: the translucent row by the machine, when it draws them */
+	if (DUKE_ACCEL() > 0)
+	{
+		duke_thline(i2, i3, i5, i6, tmach_eax, tmach_asm3, tmach_asm1, tmach_asm2, tshift_al, tshift_bl,
+		            transrev, transluc);
+		return;
+	}
+#endif
     while (counter >= 0)
     {
 	    ebx = i2 >> tshift_al;

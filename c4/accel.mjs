@@ -7,7 +7,7 @@
 // the same order, the same values left behind, 32-bit arithmetic wrapping,
 // shifts modulo 32 as c4's SHL and LSR take them, a single's sum as
 // Math.fround of the double's.
-export default function duke3d({ reader, writer, reader32, writer32, args, fval, fbits }) {
+export default function duke3d({ reader, writer, reader32, writer32, probe, args, fval, fbits }) {
   // DA_TCOL, DA_TCOLM (count, v, inc, sh, tex, pal, dest, stride): a wall's
   // column, vlineasm1/4, *dest = pal[tex[v >>> sh]]; v += inc; dest +=
   // stride; gives v. The masked one (mvlineasm1/4) leaves texel 255 out.
@@ -155,5 +155,124 @@ export default function duke3d({ reader, writer, reader32, writer32, args, fval,
     return 0;
   }
 
-  return [m => tcol(m, false), m => tcol(m, true), hline, rhline, slope, mulscale, udiv64, qinterp16, clearb, copyb];
+
+  // The translucent loops blend what is on the screen: drawn twice, a pixel
+  // would be blended twice. So they work out every pixel first, reading
+  // everything they read and making sure (probe) that every page they will
+  // write is there, and only then write: a fault comes before the first
+  // write, and the instruction runs again as if it had not begun.
+  function later(m) {
+    const list = [];
+    let page = -1;
+    return {
+      put(a, b) {
+        if ((a >>> 12) !== page) { probe(m, a, 1, true); page = a >>> 12; }
+        list.push(a, b);
+      },
+      commit() {
+        const wr = writer(m);
+        for (let i = 0; i < list.length; i += 2) wr(list[i], list[i + 1]);
+      },
+    };
+  }
+  // a blend's index, the new colour over the old, swapped when transrev
+  const blend = (c, old, rev) => {
+    let v = (c | (old << 8)) & 0xffff;
+    if (rev) v = ((v >> 8) | (v << 8)) & 0xffff;
+    return v;
+  };
+
+  // DA_TVLINE1 (inc, pal, n, v, tex, dest, sh, bpl, transrev, transluc):
+  // tvlineasm1, a translucent wall's column of n pixels; gives v
+  function tvline1(m) {
+    let [inc, pal, n, v, tex, dest, sh, bpl, rev, tl] = args(m, 10);
+    sh &= 31;
+    const rt = reader(m), rp = reader(m), rd = reader(m), rl = reader(m), out = later(m);
+    for (; n !== 0; n = (n - 1) | 0, v = (v + inc) | 0, dest = (dest + bpl) | 0) {
+      const t = rt((tex + (v >>> sh)) | 0);
+      if (t !== 255) out.put(dest, rl((tl + blend(rp((pal + t) | 0), rd(dest), rev)) | 0));
+    }
+    out.commit();
+    return v;
+  }
+
+  // DA_TVLINE2 (ebp, inca, bufa, bufb, i5, i6, incb, edi, sh, pala, palb,
+  // bpl, transrev, transluc, pasm1, pasm2): tvlineasm2, two translucent
+  // columns side by side at edi + i6, i6 counting up from below zero to
+  // its end as the original did; asm1 and asm2 left as it leaves them, and
+  // gives how many rows drew both (pixelsAllowed's count)
+  function tvline2(m) {
+    let [ebp, inca, bufa, bufb, i5, i6, incb, edi, sh, pala, palb, bpl, rev, tl, pasm1, pasm2] = args(m, 16);
+    sh &= 31;
+    const ra = reader(m), rb = reader(m), rp = reader(m), rd = reader(m), rl = reader(m), w32 = writer32(m), out = later(m);
+    let both = 0;
+    i6 = (i6 - edi) | 0;
+    do {
+      const a = ra((bufa + (i5 >>> sh)) | 0), b = rb((bufb + (ebp >>> sh)) | 0);
+      i5 = (i5 + inca) | 0;
+      ebp = (ebp + incb) | 0;
+      const p0 = (i6 + edi) | 0, p1 = (p0 + 1) | 0;
+      if (a === 255) {
+        if (b !== 255) out.put(p1, rl((tl + blend(rp((palb + b) | 0), rd(p1), rev)) | 0));
+      } else if (b === 255) {
+        out.put(p0, rl((tl + blend(rp((pala + a) | 0), rd(p0), rev)) | 0));
+      } else {
+        const l = blend(rp((pala + a) | 0), rd(p0), rev), r = blend(rp((palb + b) | 0), rd(p1), rev);
+        out.put(p0, rl((tl + l) | 0));
+        out.put(p1, rl((tl + r) | 0));
+        both++;
+      }
+      i6 = (i6 + bpl) | 0;
+    } while ((i6 >>> 0) > (((i6 - bpl) | 0) >>> 0));
+    probe(m, pasm1, 4, true);
+    probe(m, pasm2, 4, true);
+    out.commit();
+    w32(pasm1, i5);
+    w32(pasm2, ebp);
+    return both;
+  }
+
+  // DA_TSPRITE (i2, n, i4, tex, dest, pal, eax1, eax3, ecx, padder, bpl,
+  // transrev, transluc): DrawSpriteVerticalLine, a translucent sprite's
+  // column, n - 1 pixels; adder left as it leaves it
+  function tsprite(m) {
+    let [i2, n, i4, tex, dest, pal, eax1, eax3, ecx, padder, bpl, rev, tl] = args(m, 13);
+    const r32 = reader32(m), w32 = writer32(m), rt = reader(m), rp = reader(m), rd = reader(m), rl = reader(m), out = later(m);
+    let adder = r32(padder);
+    while (n !== 0) {
+      n = (n - 1) | 0;
+      if (n !== 0) {
+        i4 = (i4 + ecx) | 0;
+        if ((i4 >>> 0) < (((i4 - ecx) | 0) >>> 0)) adder = eax3;
+        const c = rt(tex);
+        i2 = (i2 + eax1) | 0;
+        if ((i2 >>> 0) < (((i2 - eax1) | 0) >>> 0)) tex = (tex + 1) | 0;
+        tex = (tex + adder) | 0;
+        if (c !== 255) out.put(dest, rl((tl + blend(rp((pal + c) | 0), rd(dest), rev)) | 0));
+        dest = (dest + bpl) | 0;
+      }
+    }
+    probe(m, padder, 4, true);
+    out.commit();
+    w32(padder, adder);
+    return 0;
+  }
+
+  // DA_THLINE (i2, i3, i5, i6, tex, pal, inc2, inc5, al, bl, transrev,
+  // transluc): thlineskipmodify, a translucent floor sprite's row, left to
+  // right, (i3 >> 16) + 1 pixels
+  function thline(m) {
+    let [i2, i3, i5, i6, tex, pal, inc2, inc5, al, bl, rev, tl] = args(m, 12);
+    const rt = reader(m), rp = reader(m), rd = reader(m), rl = reader(m), out = later(m);
+    for (let counter = i3 >>> 16; counter >= 0; counter--, i2 = (i2 + inc2) | 0, i5 = (i5 + inc5) | 0, i6 = (i6 + 1) | 0) {
+      const ebx = ((i5 >>> (32 - bl)) | ((i2 >>> al) << bl)) >>> 0;
+      const t = rt((tex + ebx) | 0);
+      if (t !== 255) out.put(i6, rl((tl + blend(rp((pal + t) | 0), rd(i6), rev)) | 0));
+    }
+    out.commit();
+    return 0;
+  }
+
+  return [m => tcol(m, false), m => tcol(m, true), hline, rhline, slope, mulscale, udiv64, qinterp16, clearb, copyb,
+          tvline1, tvline2, tsprite, thline];
 }

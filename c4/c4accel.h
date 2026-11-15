@@ -12,7 +12,8 @@
 
 enum {
 	DA_TCOL, DA_TCOLM, DA_HLINE, DA_RHLINE, DA_SLOPE,
-	DA_MULSCALE, DA_UDIV64, DA_QINTERP16, DA_CLEARB, DA_COPYB
+	DA_MULSCALE, DA_UDIV64, DA_QINTERP16, DA_CLEARB, DA_COPYB,
+	DA_TVLINE1, DA_TVLINE2, DA_TSPRITE, DA_THLINE
 };
 
 extern int32_t accel_draw;
@@ -37,6 +38,17 @@ int32_t accel_base(void);
 #define duke_qinterp16(buf, num, val, add) __c4_opcode((buf), (num), (val), (add), DA_OP(DA_QINTERP16))
 #define duke_clearb(d, c, a) __c4_opcode((d), (c), (a), DA_OP(DA_CLEARB))
 #define duke_copyb(s, d, c) __c4_opcode((s), (d), (c), DA_OP(DA_COPYB))
+/* the translucent loops: tvlineasm1, tvlineasm2, DrawSpriteVerticalLine,
+   thlineskipmodify (draw.c), with the globals they read as arguments */
+#define duke_tvline1(inc, pal, n, v, tex, dest, sh, bpl, rev, tl) \
+	__c4_opcode((inc), (pal), (n), (v), (tex), (dest), (sh), (bpl), (rev), (tl), DA_OP(DA_TVLINE1))
+#define duke_tvline2(ebp, inca, bufa, bufb, i5, i6, incb, edi, sh, pala, palb, bpl, rev, tl, pasm1, pasm2) \
+	__c4_opcode((ebp), (inca), (bufa), (bufb), (i5), (i6), (incb), (edi), (sh), (pala), (palb), (bpl), (rev), (tl), \
+		(pasm1), (pasm2), DA_OP(DA_TVLINE2))
+#define duke_tsprite(i2, n, i4, tex, dest, pal, eax1, eax3, ecx, padder, bpl, rev, tl) \
+	__c4_opcode((i2), (n), (i4), (tex), (dest), (pal), (eax1), (eax3), (ecx), (padder), (bpl), (rev), (tl), DA_OP(DA_TSPRITE))
+#define duke_thline(i2, i3, i5, i6, tex, pal, inc2, inc5, al, bl, rev, tl) \
+	__c4_opcode((i2), (i3), (i5), (i6), (tex), (pal), (inc2), (inc5), (al), (bl), (rev), (tl), DA_OP(DA_THLINE))
 #else
 #define duke_tcol(n, v, inc, sh, tex, pal, dest, stride) 0
 #define duke_tcol_masked(n, v, inc, sh, tex, pal, dest, stride) 0
@@ -48,6 +60,10 @@ int32_t accel_base(void);
 #define duke_qinterp16(buf, num, val, add) 0
 #define duke_clearb(d, c, a) 0
 #define duke_copyb(s, d, c) 0
+#define duke_tvline1(inc, pal, n, v, tex, dest, sh, bpl, rev, tl) 0
+#define duke_tvline2(ebp, inca, bufa, bufb, i5, i6, incb, edi, sh, pala, palb, bpl, rev, tl, pasm1, pasm2) 0
+#define duke_tsprite(i2, n, i4, tex, dest, pal, eax1, eax3, ecx, padder, bpl, rev, tl) 0
+#define duke_thline(i2, i3, i5, i6, tex, pal, inc2, inc5, al, bl, rev, tl) 0
 #endif
 
 #endif
