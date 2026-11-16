@@ -72,8 +72,10 @@ bigger. The time a frame takes grows with its pixels. `duke3d -res
 
 Video Setup's other lines are Detail (high or low), Screen Size (how
 much of the screen the view takes beside the status bar), Brightness, and
-Show FPS, the frame rate on screen. "Full screen" does nothing here: the
-game always has the whole display.
+Show FPS, the frame rate on screen, and Accelerated, the machine's
+drawing accelerators where it has them (c4's `docs/accel.md`). "Full
+screen" does nothing here: the game has the whole display unless
+`-window` gave it a window.
 
 ## How fast
 
@@ -85,7 +87,10 @@ with the same frames (c4's `docs/duke3d-port.md` §9). In the page, C4IX at
 320x200 (2026-11-11, Chrome on a Chromebook): 12.9 fps as the page starts
 (paced at 100 MHz, with the MMU); at `?mhz=400&cpus=1`, 16.2 fps with the
 MMU and 20.3 without. A frame's cost grows with its pixels: 640x480 is
-4.1 fps as the page starts.
+4.1 fps as the page starts. With its accelerators (`c4/accel.mjs`, Video
+Setup's Accelerated), on 2026-11-15 at 400 MHz: 52 to 53 fps in play with
+the MMU and 62 to 75 without, and a median frame of 1.4 to 1.9 M
+instructions on node's bare machine.
 
 ## What is c4's here
 
