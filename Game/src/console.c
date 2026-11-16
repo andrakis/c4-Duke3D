@@ -2,6 +2,9 @@
 #include "console.h"
 #include "cvars.h"
 #include "cvar_defs.h"
+#ifdef C4DUKE
+extern char console_cheat[16];   /* game.c: a cheat for cheats() to read */
+#endif
 #include <stdarg.h>
 
 // For autoexec.cfg
@@ -482,6 +485,33 @@ void CONSOLE_ParseCommand(char * command)
             break;
         }
     }
+#ifdef C4DUKE
+    // c4: not a command, then perhaps a cheat, with its DN or without, for
+    // cheats() (game.c) to read as if typed in the game
+    if (i == numCvars && argc == 0)
+    {
+        char *c = cvar;
+        int n;
+        if ((c[0] == 'd' || c[0] == 'D') && (c[1] == 'n' || c[1] == 'N'))
+            c += 2;
+        for (n = 0; c[n] && n < 15; n++)
+        {
+            if (!((c[n] >= 'a' && c[n] <= 'z') || (c[n] >= 'A' && c[n] <= 'Z') || (c[n] >= '0' && c[n] <= '9')))
+                break;
+            console_cheat[n] = (c[n] >= 'A' && c[n] <= 'Z') ? c[n] - 'A' + 'a' : c[n];
+        }
+        if (n > 0 && !c[n] && n < 12)
+        {
+            console_cheat[n] = 0;
+            CONSOLE_Printf("cheat: dn%s", console_cheat);
+        }
+        else
+        {
+            console_cheat[0] = 0;
+            CONSOLE_Printf("unknown command: %s", cvar);
+        }
+    }
+#endif
 
 }
 

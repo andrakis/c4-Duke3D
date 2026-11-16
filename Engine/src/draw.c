@@ -804,6 +804,14 @@ void mhlineskipmodify( uint32_t i2, int32_t numPixels, int32_t i5, uint8_t* dest
     uint32_t ebx;
     int32_t colorIndex;
     
+#ifdef C4DUKE
+    /* c4: the row by the machine, when it draws them */
+    if (DUKE_ACCEL() > 0)
+    {
+        duke_mhline(numPixels + 1, i2, i5, dest, mshift_al, mshift_bl, textureData, mmach_asm3, mmach_asm1, mmach_asm2);
+        return;
+    }
+#endif
     while (numPixels >= 0)
     {
 	    ebx = i2 >> mshift_al;

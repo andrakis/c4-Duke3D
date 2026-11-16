@@ -6169,6 +6169,32 @@ uint8_t  cheatquotes[NUMCHEATCODES][14] = {
 
 
 uint8_t  cheatbuf[10],cheatbuflen;
+#ifdef C4DUKE
+/* c4: a cheat typed in the console (console.c: "dnkroz" or "kroz" on its
+   own line), read by cheats() as if its letters had come one at a time
+   from the keyboard after D N. A cheat that does not match is dropped. */
+char console_cheat[16];
+static char console_cheat_buf[16], *console_cheat_at;
+static int cheat_waiting(void)
+{
+    if (console_cheat_at)
+    {
+        if (*console_cheat_at)
+            return 1;
+        console_cheat_at = 0;
+        ps[myconnectindex].cheat_phase = 0;
+        return 0;
+    }
+    return KB_KeyWaiting();
+}
+static short cheat_getch(void)
+{
+    return console_cheat_at ? *console_cheat_at++ : KB_Getch();
+}
+#else
+#define cheat_waiting() KB_KeyWaiting()
+#define cheat_getch() KB_Getch()
+#endif
 void cheats(void)
 {
     short ch, i, j, k, weapon;
@@ -6176,11 +6202,29 @@ void cheats(void)
     if( (ps[myconnectindex].gm&MODE_TYPE) || (ps[myconnectindex].gm&MODE_MENU))
         return;
 
+#ifdef C4DUKE
+    if (console_cheat[0])
+    {
+        // as D N does, and not where D N would not: a demo being recorded,
+        // a game of several, Damn I'm Good
+        if (numplayers < 2 && ud.recstat == 0 && ud.player_skill != 4)
+        {
+            strcpy(console_cheat_buf, console_cheat);
+            console_cheat_at = console_cheat_buf;
+            ps[myconnectindex].cheat_phase = 1;
+            cheatbuflen = 0;
+        }
+        else
+            FTA(22,&ps[myconnectindex],1);
+        console_cheat[0] = 0;
+    }
+#endif
+
     if ( ps[myconnectindex].cheat_phase == 1)
     {
-       while (KB_KeyWaiting())
+       while (cheat_waiting())
        {
-          ch = KB_Getch();
+          ch = cheat_getch();
           ch = tolower(ch);
 
           if( !( (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') ) )
@@ -7166,13 +7210,16 @@ void checkcommandline(int argc,char  **argv)
         {
             c = argv[i];
 
-			if (stricmp(c, "-map") == 0)
+			if (stricmp(c, "-map") == 0 && i + 1 < argc)
             {
 				i++;
 				strcpy(boardfilename,argv[i]);
 				if( strchr(boardfilename,'.') == 0)
 					strcat(boardfilename,".map");
 				printf("Using level: '%s'.\n",boardfilename);
+				// past the name too: a path such as /home/x.map read again would
+				// be taken for a /h flag, and print the help and quit
+				i++;
 				continue;
 
 			}

@@ -58,6 +58,11 @@ void copybufbyte(void *S, void *D, int32_t c)
 void copybufreverse(void *S, void *D, int32_t c)
 {
 	uint8_t  *p = (uint8_t *)S, *q = (uint8_t *)D;
+#ifdef C4DUKE
+	/* c4: by the machine where the two do not overlap -- every row of a
+	   mirror, so a mirror on the screen costs a copy, not a loop a pixel */
+	if (c > 0 && (q + c <= p - c + 1 || p < q) && DUKE_ACCEL() > 0) { duke_copyr(S, D, c); return; }
+#endif
 	while((c--) > 0) *(q++) = *(p--);
 }
 

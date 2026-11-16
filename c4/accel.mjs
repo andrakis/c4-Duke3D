@@ -7,7 +7,7 @@
 // the same order, the same values left behind, 32-bit arithmetic wrapping,
 // shifts modulo 32 as c4's SHL and LSR take them, a single's sum as
 // Math.fround of the double's.
-export default function duke3d({ reader, writer, reader32, writer32, probe, args, fval, fbits }) {
+export default function duke3d({ reader, writer, reader32, writer32, probe, span, args, fval, fbits }) {
   // DA_TCOL, DA_TCOLM (count, v, inc, sh, tex, pal, dest, stride): a wall's
   // column, vlineasm1/4, *dest = pal[tex[v >>> sh]]; v += inc; dest +=
   // stride; gives v. The masked one (mvlineasm1/4) leaves texel 255 out.
@@ -154,10 +154,37 @@ export default function duke3d({ reader, writer, reader32, writer32, probe, args
 
   // DA_COPYB (src, dest, c): copybufbyte where the two do not overlap (the
   // game asks only then: run again after a fault, it reads what it read)
+  // a page at a time (span), as one move where both sides are plain bytes
   function copyb(m) {
     let [s, d, c] = args(m, 3);
-    const rs = reader(m), wr = writer(m);
-    for (; c > 0; c--, s = (s + 1) | 0, d = (d + 1) | 0) wr(d, rs(s));
+    while (c > 0) {
+      const n = Math.min(c, 4096 - (s & 4095), 4096 - (d & 4095));
+      const a = span(m, s, n, false), b = span(m, d, n, true);
+      if (a && b) b.set(a);
+      else {
+        const rs = reader(m), wr = writer(m);
+        for (let k = 0; k < n; k++) wr((d + k) | 0, rs((s + k) | 0));
+      }
+      s = (s + n) | 0; d = (d + n) | 0; c -= n;
+    }
+    return 0;
+  }
+
+  // DA_COPYR (src, dest, c): copybufreverse, c bytes read down from src and
+  // written up from dest -- a mirror's rows, turned round. The game asks
+  // only where the two do not overlap, so it too may run again after a fault
+  function copyr(m) {
+    let [s, d, c] = args(m, 3);
+    while (c > 0) {
+      const n = Math.min(c, (s & 4095) + 1, 4096 - (d & 4095));
+      const a = span(m, (s - n + 1) | 0, n, false), b = span(m, d, n, true);
+      if (a && b) for (let k = 0, j = n - 1; k < n; k++, j--) b[k] = a[j];
+      else {
+        const rs = reader(m), wr = writer(m);
+        for (let k = 0; k < n; k++) wr((d + k) | 0, rs((s - k) | 0));
+      }
+      s = (s - n) | 0; d = (d + n) | 0; c -= n;
+    }
     return 0;
   }
 
@@ -313,6 +340,21 @@ export default function duke3d({ reader, writer, reader32, writer32, probe, args
     return (lo >>> s) | (hi << (32 - s));
   }
 
+  // DA_MHLINE (n, a, b, dest, sh1, bits, tex, pal, da, db): a masked floor's
+  // or ceiling's row left to right, mhlineskipmodify: c = tex[((a >>> sh1)
+  // << bits) | (b >>> (32 - bits))], drawn as pal[c] unless 255; a += da;
+  // b += db. The shift by 32 - bits is x86's and gcc's, taken mod 32 (shld)
+  function mhline(m) {
+    let [n, a, b, dest, sh1, bits, tex, pal, da, db] = args(m, 10);
+    const rt = reader(m), rp = reader(m), wr = writer(m), sh2 = (32 - bits) & 31;
+    sh1 &= 31; bits &= 31;
+    for (; n > 0; n--, dest = (dest + 1) | 0, a = (a + da) | 0, b = (b + db) | 0) {
+      const c = rt((tex + (((a >>> sh1) << bits) | (b >>> sh2))) | 0);
+      if (c !== 255) wr(dest, rp((pal + c) | 0));
+    }
+    return 0;
+  }
+
   return [m => tcol(m, false), m => tcol(m, true), hline, rhline, slope, mulscale, udiv64, qinterp16, clearb, copyb,
-          tvline1, tvline2, tsprite, thline, scale, dmulscale];
+          tvline1, tvline2, tsprite, thline, scale, dmulscale, copyr, mhline];
 }
