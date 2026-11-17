@@ -24,23 +24,23 @@ DUKE3D_HDRS  := $(wildcard $(DUKE3D)/Engine/src/*.h $(DUKE3D)/Game/src/*.h $(DUK
                 libjs/guest/gui.h libjs/guest/gui.c libjs/guest/snd.h libjs/guest/snd.c libjs/guest/accel.h
 DUKE3D_INC   := -D C4DUKE -D PLATFORM_UNIX -I $(DUKE3D)/c4/inc -I src/c4ix/libc/include -I src/c4ix/include \
                 -I libjs/guest -I $(DUKE3D)/Engine/src -I $(DUKE3D)/Game/src -I $(DUKE3D)/c4
-DUKE3D_CC    := ./c4sp32 -c 400000 src/c4sp/lisp/c4lc.lisp -O $(IMG_G) -mfuse -fno-builtin -c -conforming $(DUKE3D_INC)
+DUKE3D_CC    := $(call lc32,-c 400000) -O $(IMG_G) -mfuse -fno-builtin -c -conforming $(DUKE3D_INC)
 DUKE3D_OBJS  := $(DUKE3D_ENG:%=.duke3d/%.c4o) $(DUKE3D_GAME:%=.duke3d/%.c4o) $(DUKE3D_AUD:%=.duke3d/%.c4o) \
                 $(DUKE3D_C4:%=.duke3d/%.c4o)
 duke3d-objs: $(DUKE3D_OBJS) $(DUKE3D_PLAT:%=.duke3d/plat/%.c4o)
-.duke3d/%.c4o: $(DUKE3D)/Engine/src/%.c $(DUKE3D_HDRS) $(C4LC_LISP) .img_g | c4sp32
+.duke3d/%.c4o: $(DUKE3D)/Engine/src/%.c $(DUKE3D_HDRS) $(C4LC_LISP) .img_g | $(LC32_BIN)
 	@mkdir -p .duke3d/plat
 	$(DUKE3D_CC) $< $@ > /dev/null
-.duke3d/%.c4o: $(DUKE3D)/Game/src/%.c $(DUKE3D_HDRS) $(C4LC_LISP) .img_g | c4sp32
+.duke3d/%.c4o: $(DUKE3D)/Game/src/%.c $(DUKE3D_HDRS) $(C4LC_LISP) .img_g | $(LC32_BIN)
 	@mkdir -p .duke3d/plat
 	$(DUKE3D_CC) $< $@ > /dev/null
-.duke3d/%.c4o: $(DUKE3D)/Game/src/audiolib/%.c $(DUKE3D_HDRS) $(C4LC_LISP) .img_g | c4sp32
+.duke3d/%.c4o: $(DUKE3D)/Game/src/audiolib/%.c $(DUKE3D_HDRS) $(C4LC_LISP) .img_g | $(LC32_BIN)
 	@mkdir -p .duke3d/plat
 	$(DUKE3D_CC) $< $@ > /dev/null
-.duke3d/%.c4o: $(DUKE3D)/c4/%.c $(DUKE3D_HDRS) $(C4LC_LISP) .img_g | c4sp32
+.duke3d/%.c4o: $(DUKE3D)/c4/%.c $(DUKE3D_HDRS) $(C4LC_LISP) .img_g | $(LC32_BIN)
 	@mkdir -p .duke3d/plat
 	$(DUKE3D_CC) $< $@ > /dev/null
-.duke3d/plat/%.c4o: $(DUKE3D)/c4/%.c $(DUKE3D_HDRS) $(C4LC_LISP) .img_g | c4sp32
+.duke3d/plat/%.c4o: $(DUKE3D)/c4/%.c $(DUKE3D_HDRS) $(C4LC_LISP) .img_g | $(LC32_BIN)
 	@mkdir -p .duke3d/plat
 	$(DUKE3D_CC) $< $@ > /dev/null
 PHONY += duke3d-objs
@@ -93,7 +93,7 @@ DUKE3D_GM   := /v1 /l1 /s2 /ns -sum 50 -frames 600 -script
 # c4's port: Duke's accelerators (c4/accel.mjs) against their loops, on the
 # bare machine, with libjs's own (cli.js loads them, docs/accel.md). In a
 # directory of its own: c4-images.sh links .duke3d/*.c4o into the game.
-.duke3d/test/acceltest.c4o: $(DUKE3D)/c4/acceltest.c $(DUKE3D_HDRS) $(C4LC_LISP) .img_g | c4sp32
+.duke3d/test/acceltest.c4o: $(DUKE3D)/c4/acceltest.c $(DUKE3D_HDRS) $(C4LC_LISP) .img_g | $(LC32_BIN)
 	@mkdir -p .duke3d/test
 	$(DUKE3D_CC) $< $@ > /dev/null
 .duke3d/test/acceltest.c4r: .duke3d/test/acceltest.c4o libc-bare-objs
