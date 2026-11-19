@@ -579,6 +579,13 @@ int MUSIC_Init(int SoundCard, int Address) {
 		music_on = 1;
 		return MUSIC_Ok;
 	}
+	// al_midi.c drives an OPL2, and the card is an OPL3 whose mode is the
+	// machine's: a program before this one (Doom turns it on, and a Doom
+	// that is killed never turns it back off) may have left it in its
+	// OPL3 mode, where a channel sounds only with its 0xC0 left/right
+	// bits. al_midi.c never sets them, so every note would be silent.
+	snd_opl(0x104, 0);                      // no four-operator channels
+	snd_opl(0x105, 0);                      // the OPL2 al_midi.c knows
 	AL_Init(0);                             // an AdLib whatever the card (al_midi.c)
 	al_funcs.NoteOff = AL_NoteOff;
 	al_funcs.NoteOn = AL_NoteOn;
