@@ -146,6 +146,25 @@ void duke_find_grp (char *path)
 	path[0] = 0;
 }
 
+// The setup file, duke3d.cfg: with -home under C4DOS and on the bare
+// machine, in duke3d/ beside the person's GRP -- B:\DUKE3D\DUKE3D.CFG
+// under C4DOS, whose uploads are on B: and which writes a name with no
+// drive there -- so the full game's settings are its own, apart from the
+// shareware's. (Read before the GRP is looked for, and a file is read
+// whole to find whether it is there, so this does not look.) On C4IX, as
+// it was.
+void duke_setup_name (char *name)
+{
+	struct stat st;
+	if (home && !duke_testing && stat ("/home", &st) != 0 && !strchr (name, '\\') && !strchr (name, '/'))
+	{
+		char cfg[64];
+		strcpy (cfg, name);
+		strcpy (name, "duke3d/");
+		strcat (name, cfg);
+	}
+}
+
 // ---- the test's input ----
 
 // From the frame the level is first drawn: [first, last) a key held (a

@@ -89,6 +89,9 @@ int32 mouseSensitivity_X;
 int32 mouseSensitivity_Y;
 
 static char  setupfilename[512];//={SETUPFILENAME};
+#ifdef C4DUKE
+void duke_setup_name (char *name);
+#endif
 static int32 scripthandle;
 static int32 setupread=0;
 /*
@@ -127,6 +130,10 @@ void CONFIG_GetSetupFilename( void )
 	   //No
 		strcpy (setupfilename, SETUPFILENAME);
    }
+#ifdef C4DUKE
+   // c4: the person's own game keeps its settings beside its GRP (c4/duke-sum.c)
+   duke_setup_name (setupfilename);
+#endif
 
    printf("Using Setup file: '%s'\n",setupfilename);
    i=clock()+(3*CLOCKS_PER_SEC/4);

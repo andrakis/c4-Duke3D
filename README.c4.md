@@ -41,14 +41,19 @@ start the game. It looks in Duke's folder first, then in `/home`
 (`duke_find_grp`, `c4/duke-sum.c`):
 
 - On C4IX, `/home/duke3d/duke3d.grp`, then `/home/DUKE3D.GRP`.
-- On the bare machine and under C4DOS the uploads are on the disk by
-  their names: `duke3d/duke3d.grp` (under C4DOS, `A:\DUKE3D\DUKE3D.GRP`),
-  then `DUKE3D.GRP`.
+- On the bare machine the uploads are on the disk by their names:
+  `duke3d/duke3d.grp`, then `DUKE3D.GRP`.
+- Under C4DOS (the page's) they are on B:, the home drive, where C4DOS
+  looks first for a name with no drive: `B:\DUKE3D\DUKE3D.GRP`, then
+  `B:\DUKE3D.GRP`.
 
 The shareware episode is `DUKE3DSW.GRP` on c4's disks, so that your
 `DUKE3D.GRP` never hides it: `duke3d` alone always plays the shareware.
 Without your file, `duke3d -home` says what it wants and stops. The two
-share their settings (`duke3d.cfg`) and saved games.
+share their settings (`duke3d.cfg`) and saved games, but for `-home` on
+the bare machine and under C4DOS, which keeps its settings beside your
+GRP: `duke3d/duke3d.cfg`, under C4DOS `B:\DUKE3D\DUKE3D.CFG`
+(`duke_setup_name`).
 
 Duke Nukem 3D: 20th Anniversary World Tour's files are not one of these:
 its `DUKE3D.GRP` has a fifth episode, new sounds and music, and CON
