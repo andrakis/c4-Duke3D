@@ -16,7 +16,8 @@ and the mouse.
 | C4IX, the whole display | `duke3d`, or Go > Games > Duke Nukem 3D; the desktop gives way until it ends | `duke-gui.c`, `duke-c4ix.c` |
 | C4IX, a window | `duke3d -window` in a Terminal; also when a program that does not give way has the display | `duke-gui.c`, `duke-c4ix.c` |
 | C4DOS | `DUKE3D` at the prompt | `duke-gui.c`, `duke-bare.c` |
-| a grin window, under C4DOS | as Doom's | `duke-gui.c`, `duke-bare.c` |
+| grin, under C4DOS | Program Manager's Action Games > Duke Nukem 3D, full screen; typed in a DOS Prompt, the same | `duke-gui.c`, `duke-bare.c` |
+| a grin window, under C4DOS | an item of Program Manager's whose Properties say "DOS program, in a window" | `duke-gui.c`, `duke-bare.c` |
 | the bare machine | `duke3d.c4r` as the machine's image; the page's `?system=duke3d` | `duke-gui.c`, `duke-bare.c` |
 
 Keys are Duke's own, and the menus' (Options > Keys Setup) change them.
@@ -32,7 +33,8 @@ the frame it went down in is let go after the next one.
 
 ## The full game: your own files
 
-`duke3d -home` (Go > Games > Duke Nukem 3D (your files); the page's
+`duke3d -home` (Go > Games > Duke Nukem 3D (your files); Program
+Manager's Full Games (Uploads) > Duke Nukem 3D under C4DOS; the page's
 `?system=duke3d-full` on the bare machine) plays your own `DUKE3D.GRP`:
 from version 1.3D, 1.4 (Plutonium Pak) or 1.5 (Atomic Edition), which
 the game tells apart by its CRC. Add it with the page's Uploads, in the
